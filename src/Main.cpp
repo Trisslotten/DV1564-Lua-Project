@@ -14,6 +14,9 @@
 
 #include <vector>
 #include <numeric>
+#include <optional>
+#include <string>
+
 
 void ConsoleThread(lua_State* L)
 {
@@ -25,6 +28,13 @@ void ConsoleThread(lua_State* L)
 		if (luaL_loadstring(L, command) || lua_pcall(L, 0, 0, 0))
 			std::cout << lua_tostring(L, -1) << '\n';
 	}
+}
+
+
+uint64_t generateGUID()
+{
+	static uint64_t incrementor = 0;
+	return incrementor++;
 }
 
 
@@ -54,13 +64,78 @@ irr::scene::SMesh* createMesh(std::vector<irr::core::vector3df> vertices)
 	}
 
 	mesh->addMeshBuffer(buffer);
-	mesh->setDirty();
 	mesh->recalculateBoundingBox();
+	mesh->setDirty();
 	return mesh;
 }
 
 
 
+void addMesh(irr::IrrlichtDevice* device, std::vector<irr::core::vector3df> vertices, std::optional<std::string> name = std::nullopt)
+{
+	uint64_t id = generateGUID();
+	if (!name)
+	{
+		name = "mesh" + std::to_string(id);
+	}
+	//std::cout << name.value() << "\n";
+
+	irr::video::IVideoDriver* driver = device->getVideoDriver();
+	irr::scene::ISceneManager* smgr = device->getSceneManager();
+
+	auto meshNode = smgr->addMeshSceneNode(createMesh(vertices), 0, id);
+	meshNode->setName(name.value().c_str());
+
+	meshNode->setMaterialFlag(irr::video::EMF_BACK_FACE_CULLING, false);
+	meshNode->setMaterialFlag(irr::video::EMF_LIGHTING, false);
+	meshNode->setMaterialTexture(0, driver->getTexture("../Meshes/sydney.bmp"));
+}
+
+
+void addBox(irr::IrrlichtDevice* device, irr::core::vector3df pos, float size, std::optional<std::string> name = std::nullopt)
+{
+	std::vector<irr::core::vector3df> vertices;
+	vertices.emplace_back(-1, -1, -1);
+	vertices.emplace_back(1, 1, -1);
+	vertices.emplace_back(-1, 1, -1);
+	vertices.emplace_back(-1, -1, -1);
+	vertices.emplace_back(1, -1, -1);
+	vertices.emplace_back(1, 1, -1);
+
+	irr::core::matrix4 mat;
+	mat.setRotationDegrees(irr::core::vector3df(0, 90.f, 0));
+
+	vertices.resize(6 * 6);
+	for (int i = 0; i < 3; i++)
+	{
+		for (int j = 0; j < 6; j++)
+		{
+			auto vert = vertices[i * 6 + j];
+			mat.rotateVect(vert);
+			vertices[(i + 1) * 6 + j] = vert;
+		}
+	}
+	mat.setRotationDegrees(irr::core::vector3df(0, 0, 90));
+	for (int j = 0; j < 6; j++)
+	{
+		auto vert = vertices[3 * 6 + j];
+		mat.rotateVect(vert);
+		vertices[4 * 6 + j] = vert;
+	}
+	for (int j = 0; j < 6; j++)
+	{
+		auto vert = vertices[4 * 6 + j];
+		mat.rotateVect(vert);
+		mat.rotateVect(vert);
+		vertices[5 * 6 + j] = vert;
+	}
+
+	for (int i = 0; i < vertices.size(); i++)
+	{
+		vertices[i] = size * vertices[i] / 2 + pos;
+	}
+	addMesh(device, vertices, name);
+}
 
 
 
@@ -83,22 +158,24 @@ int main()
 
 	guienv->addStaticText(L"Hello World! This is the Irrlicht Software renderer!", irr::core::rect<irr::s32>(10, 10, 260, 22), true);
 
-	irr::video::SMaterial bogdan;
 
-	std::vector<irr::core::vector3df> vertices;
-	for (int i = 0; i < 3 * 1; i++)
+	for (int i = 0; i < 50; i++)
 	{
-		float x = 2.f*float(rand()) / RAND_MAX;
-		float y = 2.f*float(rand()) / RAND_MAX;
-		float z = 2.f*float(rand()) / RAND_MAX;
-		vertices.emplace_back(x,y,z);
+		std::vector<irr::core::vector3df> vertices;
+		for (int j = 0; j < 3 * 1; j++)
+		{
+			float x = 2.f*float(rand()) / RAND_MAX + i*2;
+			float y = 2.f*float(rand()) / RAND_MAX;
+			float z = 2.f*float(rand()) / RAND_MAX;
+			vertices.emplace_back(x,y,z);
+		}
+		if (rand() % 2)
+			addMesh(device, vertices);
+		else
+			addMesh(device, vertices, "bogdansMesh");
 	}
 
-	auto meshNode = smgr->addMeshSceneNode(createMesh(vertices));
-
-	meshNode->setMaterialFlag(irr::video::EMF_BACK_FACE_CULLING, false);
-	meshNode->setMaterialFlag(irr::video::EMF_LIGHTING, false);
-	meshNode->setMaterialTexture(0, driver->getTexture("../Meshes/sydney.bmp"));
+	addBox(device, irr::core::vector3df(1,9,3), 3.f);
 
 
 	irr::SKeyMap keys[4];
@@ -130,11 +207,11 @@ int main()
 		guienv->drawAll();
 
 		driver->endScene();
-
 	}
 
 	device->drop();
 
 	conThread.join();
+
 	return 0;
 }

@@ -31,9 +31,9 @@ void ConsoleThread(lua_State* L)
 }
 
 
-uint64_t generateGUID()
+int generateGUID()
 {
-	static uint64_t incrementor = 0;
+	static int incrementor = 0;
 	return incrementor++;
 }
 
@@ -73,7 +73,7 @@ irr::scene::SMesh* createMesh(std::vector<irr::core::vector3df> vertices)
 
 void addMesh(irr::IrrlichtDevice* device, std::vector<irr::core::vector3df> vertices, std::optional<std::string> name = std::nullopt)
 {
-	uint64_t id = generateGUID();
+	int id = generateGUID();
 	if (!name)
 	{
 		name = "mesh" + std::to_string(id);
@@ -138,6 +138,32 @@ void addBox(irr::IrrlichtDevice* device, irr::core::vector3df pos, float size, s
 }
 
 
+struct NodeInfo
+{
+	int id;
+	std::string name;
+};
+
+
+std::vector<NodeInfo> getNodes(irr::scene::ISceneManager* smgr)
+{
+	std::vector<NodeInfo> result;
+
+	auto root = smgr->getRootSceneNode();
+	auto& children = root->getChildren();
+
+	for (auto& child : children)
+	{
+
+		NodeInfo info;
+		info.id = child->getID();
+		info.name = child->getName();
+		result.push_back(info);
+	}
+	return result;
+}
+
+
 
 int main()
 {
@@ -159,7 +185,7 @@ int main()
 	guienv->addStaticText(L"Hello World! This is the Irrlicht Software renderer!", irr::core::rect<irr::s32>(10, 10, 260, 22), true);
 
 
-	for (int i = 0; i < 50; i++)
+	for (int i = 0; i < 5; i++)
 	{
 		std::vector<irr::core::vector3df> vertices;
 		for (int j = 0; j < 3 * 1; j++)
@@ -169,10 +195,7 @@ int main()
 			float z = 2.f*float(rand()) / RAND_MAX;
 			vertices.emplace_back(x,y,z);
 		}
-		if (rand() % 2)
-			addMesh(device, vertices);
-		else
-			addMesh(device, vertices, "bogdansMesh");
+		addMesh(device, vertices);
 	}
 
 	addBox(device, irr::core::vector3df(1,9,3), 3.f);
@@ -192,6 +215,13 @@ int main()
 	keys[3].KeyCode = irr::KEY_KEY_D;
 
 	auto cam = smgr->addCameraSceneNodeFPS(0, 100.f, 0.02f, -1, keys, 4);
+	
+
+	auto nodes = getNodes(smgr);
+	for (auto info : nodes)
+	{
+		std::cout << "Name: " << info.name << ", ID: " << info.id << "\n";
+	}
 	
 
 	while (device->run())

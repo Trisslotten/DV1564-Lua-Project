@@ -16,6 +16,7 @@
 #include <numeric>
 #include <optional>
 #include <string>
+#include <mutex>
 
 
 void ConsoleThread(lua_State* L)
@@ -76,7 +77,7 @@ void addMesh(irr::IrrlichtDevice* device, std::vector<irr::core::vector3df> vert
 	int id = generateGUID();
 	if (!name)
 	{
-		name = "mesh" + std::to_string(id);
+		name = "mesh_" + std::to_string(id);
 	}
 	//std::cout << name.value() << "\n";
 
@@ -144,7 +145,6 @@ struct NodeInfo
 	std::string name;
 };
 
-
 std::vector<NodeInfo> getNodes(irr::scene::ISceneManager* smgr)
 {
 	std::vector<NodeInfo> result;
@@ -161,6 +161,40 @@ std::vector<NodeInfo> getNodes(irr::scene::ISceneManager* smgr)
 		result.push_back(info);
 	}
 	return result;
+}
+
+std::mutex snapshotsLock;
+std::vector<std::string> snapshots;
+void snapshot(const std::string filename)
+{
+	snapshotsLock.lock();
+
+	snapshots.push_back(filename);
+
+	snapshotsLock.unlock();
+}
+
+
+
+
+
+static int lc_snapshot(lua_State* L)
+{
+	if (lua_gettop(L) != 1)
+	{
+		return luaL_error(L, "expected single argument");
+	}
+	if (!lua_isstring(L, -1))
+	{
+		return luaL_argerror(L, 1, "Argument not string");
+	}
+
+	auto path = lua_tostring(L, -1);
+	std::cout << path << "\n";
+
+	snapshot(path);
+
+	return 0;
 }
 
 
@@ -214,14 +248,19 @@ int main()
 	keys[3].Action = irr::EKA_STRAFE_RIGHT;
 	keys[3].KeyCode = irr::KEY_KEY_D;
 
-	auto cam = smgr->addCameraSceneNodeFPS(0, 100.f, 0.02f, -1, keys, 4);
-	
+	auto cam = smgr->addCameraSceneNodeFPS(0, 100.f, 0.02f, generateGUID(), keys, 4);
+	cam->setName("camera");
 
 	auto nodes = getNodes(smgr);
 	for (auto info : nodes)
 	{
 		std::cout << "Name: " << info.name << ", ID: " << info.id << "\n";
 	}
+	
+
+	lua_pushlightuserdata(L, device);
+	lua_pushcclosure(L, lc_snapshot, 1);
+	lua_setglobal(L, "snapshot"); 
 	
 
 	while (device->run())
@@ -237,6 +276,24 @@ int main()
 		guienv->drawAll();
 
 		driver->endScene();
+
+		
+		if (snapshotsLock.try_lock())
+		{
+			for (int i = 0; i < snapshots.size(); i++)
+			{
+				//std::cout << "Creating snapshot '" << snapshots[i] << "'\n";
+				auto img = driver->createScreenShot();
+				if (!(img && driver->writeImageToFile(img, snapshots[i].c_str())))
+				{
+					std::cerr << "ERROR: Cannot create snapshot '"  <<  snapshots[i] << "'\n";
+					
+				}
+			}
+			snapshots.clear();
+
+			snapshotsLock.unlock();
+		}
 	}
 
 	device->drop();

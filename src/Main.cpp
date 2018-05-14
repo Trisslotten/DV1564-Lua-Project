@@ -176,8 +176,6 @@ void snapshot(const std::string filename)
 
 
 
-
-
 static int lc_snapshot(lua_State* L)
 {
 	if (lua_gettop(L) != 1)
@@ -186,7 +184,7 @@ static int lc_snapshot(lua_State* L)
 	}
 	if (!lua_isstring(L, -1))
 	{
-		return luaL_argerror(L, 1, "Argument not string");
+		return luaL_argerror(L, 1, "argument not string");
 	}
 
 	auto path = lua_tostring(L, -1);
@@ -197,6 +195,85 @@ static int lc_snapshot(lua_State* L)
 	return 0;
 }
 
+
+static int lc_camera(lua_State* L)
+{
+	if (lua_gettop(L) != 2)
+	{
+		return luaL_error(L, "Error: expected two argument");
+	}
+	for (int i = 0; i < 2; i++)
+	{
+		if (!lua_istable(L, i + 1))
+		{
+			return luaL_argerror(L, i + 1, "argument not table");
+		}
+	}
+
+	lua_len(L, -1);
+	int size = lua_tonumber(L, -1);
+	lua_pop(L, 1);
+	if (size != 3)
+	{
+		return luaL_error(L, "Error: expected 3d coordinate for target");
+	}
+	lua_len(L, -2);
+	size = lua_tonumber(L, -1);
+	lua_pop(L, 1);
+	if (size != 3)
+	{
+		return luaL_error(L, "Error: expected 3d coordinate for eye");
+	}
+
+	irr::core::vector3df eye;
+	irr::core::vector3df target;
+
+	
+	auto setVec = [](irr::core::vector3df& vec, int i, float value)
+	{
+		switch (i)
+		{
+		case 0:
+			vec.X = value;
+			break;
+		case 1:
+			vec.Y = value;
+			break;
+		case 2:
+			vec.Z = value;
+			break;
+		}
+	}; 
+
+	for (int i = 0; i < 3; i++)
+	{
+		lua_rawgeti(L, -1, i + 1);
+		if (!lua_isnumber(L, -1))
+		{
+			return luaL_error(L, "Error: target coordinate not a number");
+		}
+		setVec(target, i, lua_tonumber(L, -1));
+		lua_pop(L, 1);
+
+
+		lua_rawgeti(L, -2, i + 1);
+		if (!lua_isnumber(L, -1))
+		{
+			return luaL_error(L, "Error: eye coordinate not a number");
+		}
+		setVec(eye, i, lua_tonumber(L, -1));
+		lua_pop(L, 1);
+	}
+
+	irr::scene::ICameraSceneNode* cam = static_cast<irr::scene::ICameraSceneNode*>(
+		lua_touserdata(L, lua_upvalueindex(1))
+	);
+
+	cam->setPosition(eye);
+	cam->setTarget(target);
+
+	return 0;
+}
 
 
 int main()
@@ -258,10 +335,14 @@ int main()
 	}
 	
 
-	lua_pushlightuserdata(L, device);
-	lua_pushcclosure(L, lc_snapshot, 1);
+	lua_pushcclosure(L, lc_snapshot, 0);
 	lua_setglobal(L, "snapshot"); 
 	
+
+	lua_pushlightuserdata(L, cam);
+	lua_pushcclosure(L, lc_camera, 1);
+	lua_setglobal(L, "camera");
+
 
 	while (device->run())
 	{

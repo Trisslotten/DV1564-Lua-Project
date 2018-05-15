@@ -242,5 +242,16 @@ static int lb_getNodes(lua_State* L)
 
 static int lb_addTexture(lua_State* L)
 {
+	int numArgs = lua_gettop(L);
+	if (numArgs != 1 && numArgs != 2)
+		return luaL_error(L, "Error: expected 1 or 2 arguments");
+
+	if (!lua_istable(L, 1))
+		return luaL_argerror(L, 1, "not a table");
+
+	int width = 0;
+	int height = 0;
+	std::vector<uint8_t> img;
+
 
 }

@@ -40,7 +40,6 @@ int generateGUID()
 }
 
 
-
 irr::scene::SMesh* createMesh(std::vector<irr::core::vector3df> vertices, std::vector<irr::core::vector2df> texCoords)
 { 
 
@@ -105,7 +104,7 @@ irr::scene::SMesh* createMesh(std::vector<irr::core::vector3df> vertices, std::v
 
 
 
-void addMesh(irr::IrrlichtDevice* device, std::vector<irr::core::vector3df> vertices, std::vector<irr::core::vector2df> texCoords, std::optional<std::string> name = std::nullopt)
+void addMesh(irr::IrrlichtDevice* device, std::vector<irr::core::vector3df> vertices, std::vector<irr::core::vector2df> texCoords = {}, std::optional<std::string> name = std::nullopt)
 {
 	int id = generateGUID();
 	if (!name)
@@ -288,7 +287,7 @@ static int lc_camera(lua_State* L)
 	{
 		lua_rawgeti(L, -1, i + 1);
 		if (!lua_isnumber(L, -1))
-			return luaL_argerror(L, 2, "target contains non number");
+			return luaL_argerror(L, 2, "target contains non-numeric");
 
 		setVec(target, i, lua_tonumber(L, -1));
 		lua_pop(L, 1);
@@ -296,7 +295,7 @@ static int lc_camera(lua_State* L)
 
 		lua_rawgeti(L, -2, i + 1);
 		if (!lua_isnumber(L, -1))
-			return luaL_argerror(L, 1, "eye contains non number");
+			return luaL_argerror(L, 1, "eye contains non-numeric");
 
 		setVec(eye, i, lua_tonumber(L, -1));
 		lua_pop(L, 1);
@@ -312,6 +311,60 @@ static int lc_camera(lua_State* L)
 	return 0;
 }
 
+static int lc_addMesh(lua_State* L)
+{
+	if (lua_gettop(L) != 1)
+		return luaL_error(L, "Error: single argument");
+
+	if(!lua_istable(L, 1))
+		return luaL_argerror(L, 1, "argument not table");
+
+
+	lua_len(L, 1);
+	int numVertices = lua_tonumber(L, -1);
+	lua_pop(L, 1);
+	if(numVertices == 0) 
+		return luaL_argerror(L, 1, "no vertices");
+	if (numVertices % 3 != 0)
+		return luaL_argerror(L, 1, "number of vertices not multiple of 3");
+
+
+	std::vector<irr::core::vector3df> vertices;
+
+	for (int i = 0; i < numVertices; i++)
+	{
+		lua_rawgeti(L, 1, i + 1);
+		if(!lua_istable(L, -1))
+			return luaL_argerror(L, 1, "vertex not a table");
+
+		lua_len(L, -1);
+		int numCoords = lua_tonumber(L, -1);
+		lua_pop(L, 1);
+
+		if(numCoords != 3) 
+			return luaL_argerror(L, 1, "vertex not 3d coord");
+
+		irr::core::vector3df vec;
+		for (int j = 0; j < 3; j++)
+		{
+			lua_rawgeti(L, -1, j + 1);
+			if(!lua_isnumber(L, -1))
+				return luaL_argerror(L, 1, "coord non-numeric");
+
+			setVec(vec, j, lua_tonumber(L, -1));
+			lua_pop(L, 1);
+		}
+		vertices.push_back(vec);
+	}
+
+	auto* device = static_cast<irr::IrrlichtDevice*>(
+		lua_touserdata(L, lua_upvalueindex(1))
+	);
+
+	addMesh(device, vertices);
+
+	return 0;
+}
 
 static int lc_addBox(lua_State* L)
 {
@@ -329,7 +382,7 @@ static int lc_addBox(lua_State* L)
 		return luaL_argerror(L, 1, "position not 3d coordinate");
 
 	if (!lua_isnumber(L, 2))
-		return luaL_argerror(L, 2, "argument not number");
+		return luaL_argerror(L, 2, "argument non-numeric");
 
 	float boxSize = lua_tonumber(L, 2);
 	irr::core::vector3df pos;
@@ -338,7 +391,7 @@ static int lc_addBox(lua_State* L)
 	{
 		lua_rawgeti(L, 1, i + 1);
 		if (!lua_isnumber(L, -1))
-			return luaL_argerror(L, 1, "position contains non number");
+			return luaL_argerror(L, 1, "position contains non-numeric");
 
 		setVec(pos, i, lua_tonumber(L, -1));
 		lua_pop(L, 1);
@@ -439,6 +492,10 @@ int main()
 
 	lua_pushcclosure(L, lc_snapshot, 0);
 	lua_setglobal(L, "snapshot"); 
+
+	lua_pushlightuserdata(L, device);
+	lua_pushcclosure(L, lc_addMesh, 1);
+	lua_setglobal(L, "addMesh");
 
 	lua_pushlightuserdata(L, device);
 	lua_pushcclosure(L, lc_addBox, 1);

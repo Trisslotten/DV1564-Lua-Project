@@ -238,3 +238,9 @@ static int lb_getNodes(lua_State* L)
 
 	return 1;
 }
+
+
+static int lb_addTexture(lua_State* L)
+{
+
+}

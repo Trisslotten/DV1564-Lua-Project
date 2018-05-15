@@ -43,7 +43,7 @@ int main()
 
 	std::thread conThread(ConsoleThread, L);
 
-	irr::IrrlichtDevice* device = irr::createDevice(irr::video::EDT_SOFTWARE, irr::core::dimension2d<irr::u32>(1280, 720), 16, false, false, true, 0);
+	irr::IrrlichtDevice* device = irr::createDevice(irr::video::EDT_OPENGL, irr::core::dimension2d<irr::u32>(1280, 720), 16, false, false, true, 0);
 	if (!device)
 		return 1;
 
@@ -90,6 +90,26 @@ int main()
 	lua_pushlightuserdata(L, smgr);
 	lua_pushcclosure(L, lb_getNodes, 1);
 	lua_setglobal(L, "getNodes");
+
+
+	int width = 4*314;
+	int height = 4*314;
+	std::vector<uint8_t> texData;
+	for (int y = 0; y < height; y++)
+	{
+		for (int x = 0; x < width; x++)
+		{
+			double c = 0.5*cos(x*0.01) + 0.5;
+			texData.push_back(uint8_t(c * 255));
+			texData.push_back(uint8_t(c * 255));
+			texData.push_back(uint8_t(c * 255));
+		}
+	}
+	addTexture(driver, "asd", texData, width, height);
+
+	addBox(device, irr::core::vector3df(0, 0, 0), 2.f, "lmao");
+
+	bind(device, "lmao", "asd");
 
 
 	while (device->run())

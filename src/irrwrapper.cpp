@@ -171,7 +171,6 @@ std::vector<NodeInfo> getNodes(irr::scene::ISceneManager* smgr)
 
 	for (auto& child : children)
 	{
-
 		NodeInfo info;
 		info.id = child->getID();
 		info.name = child->getName();
@@ -204,7 +203,6 @@ void handleSnapshots(irr::video::IVideoDriver* driver)
 			if (!(img && driver->writeImageToFile(img, snapshots[i].c_str())))
 			{
 				std::cerr << "ERROR: Cannot create snapshot '" << snapshots[i] << "'\n";
-
 			}
 		}
 		snapshots.clear();
@@ -212,3 +210,46 @@ void handleSnapshots(irr::video::IVideoDriver* driver)
 		snapshotsLock.unlock();
 	}
 }
+
+void addTexture(irr::video::IVideoDriver * driver, const std::string name, std::vector<uint8_t> data, int width, int height)
+{
+	auto img = driver->createImageFromData(irr::video::ECF_R8G8B8, irr::core::dimension2du(width, height), &data[0]);
+	driver->addTexture(name.c_str(), img);
+}
+
+void bind(irr::IrrlichtDevice * device, const std::string & nodeName, const std::string & texture)
+{
+	irr::video::IVideoDriver* driver = device->getVideoDriver();
+	irr::scene::ISceneManager* smgr = device->getSceneManager();
+
+
+	auto root = smgr->getRootSceneNode();
+	auto& children = root->getChildren();
+
+	irr::scene::ISceneNode* node = nullptr;
+	for (auto child : children)
+	{
+		if (child->getName() == nodeName)
+		{
+			node = child;
+			break;
+		}
+	}
+	if (!node)
+	{
+		std::cerr << "Could not find node '" << node << "'\n";
+		return;
+	}
+
+	auto tex = driver->getTexture(texture.c_str());
+	if (!tex)
+	{
+		std::cerr << "Could not find node '" << node << "'\n";
+		return;
+	}
+
+	node->setMaterialTexture(0, tex);
+}
+
+
+

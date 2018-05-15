@@ -27,3 +27,8 @@ std::vector<NodeInfo> getNodes(irr::scene::ISceneManager* smgr);
 void snapshot(const std::string filename);
 
 void handleSnapshots(irr::video::IVideoDriver* driver);
+
+
+void addTexture(irr::video::IVideoDriver* driver, const std::string name, std::vector<uint8_t > data, int width, int height);
+
+void bind(irr::IrrlichtDevice* device, const std::string& node, const std::string& texture);

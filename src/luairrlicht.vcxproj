@@ -150,6 +150,7 @@
   <ItemGroup>
     <ClInclude Include="bindings.hpp" />
     <ClInclude Include="irrwrapper.hpp" />
+    <ClInclude Include="scenelang.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -243,8 +243,8 @@ static int lb_getNodes(lua_State* L)
 static int lb_addTexture(lua_State* L)
 {
 	int numArgs = lua_gettop(L);
-	if (numArgs != 1 && numArgs != 2)
-		return luaL_error(L, "Error: expected 1 or 2 arguments");
+	if (numArgs != 2)
+		return luaL_error(L, "Error: expected 2 arguments");
 
 	if (!lua_istable(L, 1))
 		return luaL_argerror(L, 1, "not a table");
@@ -252,6 +252,107 @@ static int lb_addTexture(lua_State* L)
 	int width = 0;
 	int height = 0;
 	std::vector<uint8_t> img;
+	std::string name;
+
+	lua_len(L, 1);
+	height = lua_tonumber(L, -1);
+	lua_pop(L, 1);
+
+	if (height == 0)
+		return luaL_argerror(L, 1, "height cannot be 0");
+
+	lua_rawgeti(L, 1, 1);
+	if (!lua_istable(L, -1))
+		return luaL_argerror(L, 1, "row is not table");
+
+	lua_len(L, -1);
+	width = lua_tonumber(L, -1);
+	lua_pop(L, 2);
+
+	if (width == 0)
+		return luaL_argerror(L, 1, "width cannot be 0");
+
+	for (int y = 0; y < height; y++)
+	{
+		lua_rawgeti(L, 1, y+1);
+		if (!lua_istable(L, -1))
+			return luaL_argerror(L, 1, "row is not table");
+
+		lua_len(L, -1);
+		int currWidth = lua_tonumber(L, -1);
+		lua_pop(L, 1);
+		if(currWidth != width)
+			return luaL_argerror(L, 1, "row width mismatch");
+		
+		for (int x = 0; x < width; x++)
+		{
+			lua_rawgeti(L, -1, x + 1);
+			if(!lua_istable(L, -1))
+				return luaL_argerror(L, 1, "expected table with RGB color");
+
+			lua_len(L, -1);
+			int elements = lua_tonumber(L, -1);
+			lua_pop(L, 1);
+			if(elements != 3)
+				return luaL_argerror(L, 1, "expected exacly 3 color components");
 
 
+
+			for (int i = 0; i < 3; i++)
+			{
+				lua_rawgeti(L, -1, i + 1);
+				if(!lua_isnumber(L, -1))
+					return luaL_argerror(L, 1, "color component not a number");
+
+				float component = lua_tonumber(L, -1);
+				lua_pop(L, 1);
+				if (component < 0.f)
+					component = 0.f;
+				if(component > 1.f)
+					component = 1.f;
+
+				img.push_back(uint8_t(component * 255));
+			}
+			lua_pop(L, 1);
+		}
+		lua_pop(L, 1);
+	}
+
+	if (!lua_isstring(L, 2))
+		return luaL_argerror(L, 2, "expected string for name");
+
+	name = lua_tostring(L, 2);
+
+	auto driver = static_cast<irr::video::IVideoDriver*>(
+		lua_touserdata(L, lua_upvalueindex(1))
+	);
+
+	addTexture(driver, name, img, width, height);
+
+	return 0;
+}
+
+
+
+static int lb_bind(lua_State* L)
+{
+	int numArgs = lua_gettop(L);
+	if (numArgs != 2)
+		return luaL_error(L, "Error: expected 2 arguments");
+
+	if (!lua_isstring(L, 1))
+		return luaL_argerror(L, 1, "node name is not string");
+	if (!lua_isstring(L, 2))
+		return luaL_argerror(L, 2, "texture name is not string");
+
+	std::string node = lua_tostring(L, 1);
+	std::string texture = lua_tostring(L, 2);
+
+	auto device = static_cast<irr::IrrlichtDevice*>(
+		lua_touserdata(L, lua_upvalueindex(1))
+	);
+
+	mybind(device, node, texture);
+
+	return 0;
 }

@@ -29,5 +29,8 @@
     <ClInclude Include="irrwrapper.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="scenelang.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -180,49 +180,41 @@ std::vector<NodeInfo> getNodes(irr::scene::ISceneManager* smgr)
 }
 
 
-std::mutex snapshotsLock;
 std::vector<std::string> snapshots;
-
 void snapshot(const std::string filename)
 {
-	snapshotsLock.lock();
-
 	snapshots.push_back(filename);
-
-	snapshotsLock.unlock();
 }
 
 void handleSnapshots(irr::video::IVideoDriver* driver)
 {
-	if (snapshotsLock.try_lock())
+	for (int i = 0; i < snapshots.size(); i++)
 	{
-		for (int i = 0; i < snapshots.size(); i++)
+		//std::cout << "Creating snapshot '" << snapshots[i] << "'\n";
+		auto img = driver->createScreenShot();
+		if (!(img && driver->writeImageToFile(img, snapshots[i].c_str())))
 		{
-			//std::cout << "Creating snapshot '" << snapshots[i] << "'\n";
-			auto img = driver->createScreenShot();
-			if (!(img && driver->writeImageToFile(img, snapshots[i].c_str())))
-			{
-				std::cerr << "ERROR: Cannot create snapshot '" << snapshots[i] << "'\n";
-			}
+			std::cerr << "ERROR: Cannot create snapshot '" << snapshots[i] << "'\n";
 		}
-		snapshots.clear();
-
-		snapshotsLock.unlock();
 	}
+	snapshots.clear();
 }
 
-void addTexture(irr::video::IVideoDriver * driver, const std::string name, std::vector<uint8_t> data, int width, int height)
+void addTexture(irr::video::IVideoDriver* driver, const std::string& name, std::vector<uint8_t> data, int width, int height)
 {
 	auto img = driver->createImageFromData(irr::video::ECF_R8G8B8, irr::core::dimension2du(width, height), &data[0]);
-	driver->addTexture(name.c_str(), img);
+	if (!img)
+	{
+		std::cout << "Error: Could not create image from data\n";
+		return;
+	}
+	auto tex = driver->addTexture(name.c_str(), img);
 }
 
-void bind(irr::IrrlichtDevice * device, const std::string & nodeName, const std::string & texture)
+void mybind(irr::IrrlichtDevice * device, const std::string & nodeName, const std::string & texture)
 {
 	irr::video::IVideoDriver* driver = device->getVideoDriver();
 	irr::scene::ISceneManager* smgr = device->getSceneManager();
-
-
 	auto root = smgr->getRootSceneNode();
 	auto& children = root->getChildren();
 
@@ -237,18 +229,20 @@ void bind(irr::IrrlichtDevice * device, const std::string & nodeName, const std:
 	}
 	if (!node)
 	{
-		std::cerr << "Could not find node '" << node << "'\n";
+		std::cerr << "Could not find node '" << nodeName << "'\n";
 		return;
 	}
 
 	auto tex = driver->getTexture(texture.c_str());
 	if (!tex)
 	{
-		std::cerr << "Could not find node '" << node << "'\n";
+		std::cerr << "Could not find texture '" << texture << "'\n";
 		return;
 	}
 
 	node->setMaterialTexture(0, tex);
+	auto& mat = node->getMaterial(0);
+	mat.setFlag(irr::video::EMF_BILINEAR_FILTER, false);
 }
 
 

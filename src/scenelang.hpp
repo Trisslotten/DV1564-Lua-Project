@@ -1,5 +1,7 @@
 #pragma once
-
+#include <irrlicht.h>
+#include <string>
+#include <iostream>
 /*
 Mesh("tri") {
 	(-20,0,-20), 
@@ -35,4 +37,9 @@ RESTVECTOR: "," VECTOR2 | empty
 
 */
 
-
+bool loadScene(std::string path, irr::IrrlichtDevice* d)
+{
+	//Implement
+	std::cout << "Hello from loadScene " << d->getTimer()->getRealTimeAndDate().Weekday << std::endl;
+	return 1;
+}

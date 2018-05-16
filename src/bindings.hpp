@@ -3,9 +3,10 @@
 #include "lua.hpp"
 #include <iostream>
 #include <irrlicht.h>
+#include <fstream>
 #include <vector>
 #include "irrwrapper.hpp"
-
+#include "scenelang.hpp"
 
 
 void setVec(irr::core::vector3df& vec, int i, float value)
@@ -355,4 +356,33 @@ static int lb_bind(lua_State* L)
 	mybind(device, node, texture);
 
 	return 0;
+}
+static int lb_loadScene(lua_State* L)
+{
+	int numArgs = lua_gettop(L);
+	if (numArgs != 1)
+		return luaL_error(L, "Error: expected 1 argument");
+	if (!lua_isstring(L, 1))
+		return luaL_argerror(L, 1, "argument mismatch, expected string");
+
+
+	auto device = static_cast<irr::IrrlichtDevice*>(lua_touserdata(L, lua_upvalueindex(1)));
+	std::string filename = lua_tostring(L, 1);
+	std::ifstream f(filename);
+	if (!f)
+	{
+		return luaL_error(L, "Error: file does not exist");
+	}
+	else
+	{
+		f.close();
+	}
+	if (loadScene(filename, device))
+	{
+		return 0;
+	}
+	else
+	{
+		return luaL_error(L, "Error: Failed parsing scene file");
+	}
 }

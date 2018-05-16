@@ -56,9 +56,6 @@ int main()
 	irr::scene::ISceneManager* smgr = device->getSceneManager();
 	irr::gui::IGUIEnvironment* guienv = device->getGUIEnvironment();
 
-	guienv->addStaticText(L"Hello World! This is the Irrlicht Software renderer!", irr::core::rect<irr::s32>(10, 10, 260, 22), true);
-
-
 	irr::SKeyMap keys[4];
 	keys[0].Action = irr::EKA_MOVE_FORWARD;
 	keys[0].KeyCode = irr::KEY_KEY_W;

@@ -5,22 +5,33 @@ Mesh("tri") {
 	(-20,0,-20), 
 	(20,0,-20), 
 	(-20,0,20), 
-} 
+}
 Scene() 
 { 
 	Mesh("tri") 
 }
 
-remove whitespace:
-Mesh("tri"){(-20,0,-20),(20,0,-20),(-20,0,20),} Scene(){Mesh("tri")}
+LANG: DEFINITION LANG | empty
 
+DEFINITION: PROTOTYPE "{" BLOCK "}"
+PROTOTYPE: IDENTIFIER "(" PARAMETERS ")"
 
+PARAMETERS: PARAM RESTPARAMETERS | empty
+RESTPARAMETERS: "," PARAMETERS
 
-LANG: DEFINITION
+BLOCK: DATA | DECLERATIONS
 
-DEFINITION: IDENTIFIER "(" PARAMETER ")" "{" DEFBODY "}"
+DATA: VECTOR RESTDATA | empty
+RESTDATA: "," DATA | empty
 
-DEFBODY:
+DECLERATIONS: PROTOTYPE DECLERATIONS | empty
+
+// could cause problems if ">)" is in a string in lua code
+LUA: "Lua(<" ANY ">)" 
+
+VECTOR: "(" VECTOR2 ")"
+VECTOR2: NUM RESTVECTOR
+RESTVECTOR: "," VECTOR2 | empty
 
 */
 

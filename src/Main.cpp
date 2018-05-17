@@ -44,6 +44,10 @@ void ConsoleThread(lua_State* L)
 
 int main()
 {
+	testScene("testscene.txt");
+
+
+
 	lua_State* L = luaL_newstate();
 	luaL_openlibs(L);
 

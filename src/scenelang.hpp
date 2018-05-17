@@ -22,15 +22,16 @@ Scene()
 	Bind( "checkerboard", Mesh("square") ) 
 }
 
-LANG: DEFINITION LANG | empty
+
 DEFINITION : PROTOTYPE "{" BLOCK "}"
 PROTOTYPE : IDENTIFIER "(" PARAMETERS ")"
 PARAMETERS : PARAM RESTPARAMETERS | empty
 RESTPARAMETERS : "," PARAMETERS
-PARAM : STRING | LUA | PROTOTYPE
+PARAM : STRING | LUA | PROTOTYPE | empty
 BLOCK : DATA | DECLARATIONS | LUA
-DATA : VECTOR RESTDATA | empty
-RESTDATA : "," DATA | empty
+DATA: DATA2
+DATA2 : VECTOR RESTDATA | empty
+RESTDATA : "," DATA2 | empty
 DECLARATIONS : PROTOTYPE DECLARATIONS | empty
 VECTOR : "(" VECTOR2 ")"
 VECTOR2 : NUM RESTVECTOR
@@ -45,9 +46,8 @@ STRING
 LUA
 */
 
-bool loadScene(std::string path, irr::IrrlichtDevice* d)
-{
-	//Implement
-	std::cout << "Hello from loadScene " << d->getTimer()->getRealTimeAndDate().Weekday << std::endl;
-	return 1;
-}
+bool loadScene(const std::string& path, irr::IrrlichtDevice* d);
+
+std::string loadFile(const std::string& path);
+
+void testScene(const std::string& path);

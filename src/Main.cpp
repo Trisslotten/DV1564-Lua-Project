@@ -20,6 +20,8 @@
 #include "irrwrapper.hpp"
 #include "bindings.hpp"
 
+#include "regex.hpp"
+
 
 std::mutex commandMutex;
 std::queue<std::string> commands;

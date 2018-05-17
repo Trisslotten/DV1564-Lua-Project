@@ -146,10 +146,15 @@
   <ItemGroup>
     <ClCompile Include="irrwrapper.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="regex.cpp" />
+    <ClCompile Include="regexlib.cpp" />
+    <ClCompile Include="scenelang.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bindings.hpp" />
     <ClInclude Include="irrwrapper.hpp" />
+    <ClInclude Include="regex.hpp" />
+    <ClInclude Include="regexlib.hpp" />
     <ClInclude Include="scenelang.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\scenelang">
+      <UniqueIdentifier>{87038072-876c-4ceb-9070-e83c0752c5b2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -20,6 +23,15 @@
     </ClCompile>
     <ClCompile Include="irrwrapper.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="regexlib.cpp">
+      <Filter>Source Files\scenelang</Filter>
+    </ClCompile>
+    <ClCompile Include="scenelang.cpp">
+      <Filter>Source Files\scenelang</Filter>
+    </ClCompile>
+    <ClCompile Include="regex.cpp">
+      <Filter>Source Files\scenelang</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -29,8 +41,14 @@
     <ClInclude Include="irrwrapper.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="regexlib.hpp">
+      <Filter>Source Files\scenelang</Filter>
+    </ClInclude>
     <ClInclude Include="scenelang.hpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\scenelang</Filter>
+    </ClInclude>
+    <ClInclude Include="regex.hpp">
+      <Filter>Source Files\scenelang</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

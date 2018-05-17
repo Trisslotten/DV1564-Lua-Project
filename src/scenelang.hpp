@@ -1,5 +1,7 @@
 #pragma once
-
+#include <irrlicht.h>
+#include <string>
+#include <iostream>
 /*
 Texture("checkerboard") 
 { 
@@ -43,4 +45,9 @@ STRING
 LUA
 */
 
-
+bool loadScene(std::string path, irr::IrrlichtDevice* d)
+{
+	//Implement
+	std::cout << "Hello from loadScene " << d->getTimer()->getRealTimeAndDate().Weekday << std::endl;
+	return 1;
+}

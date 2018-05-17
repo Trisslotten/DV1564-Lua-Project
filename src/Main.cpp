@@ -101,6 +101,9 @@ int main()
 	lua_pushcclosure(L, lb_bind, 1);
 	lua_setglobal(L, "bind");
 
+	lua_pushlightuserdata(L, device);
+	lua_pushcclosure(L, lb_loadScene, 1);
+	lua_setglobal(L, "loadScene");
 
 	while (device->run())
 	{

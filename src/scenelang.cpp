@@ -1,6 +1,8 @@
 #include "scenelang.hpp"
 
 #include <fstream>
+#include <vector>
+#include <list>
 #include "regex.hpp"
 
 /*
@@ -33,29 +35,72 @@ LUA
 
 namespace
 {
+	class Tree
+	{
+	public:
+		std::string lexeme, tag;
+		std::list < Tree * > children;
+		Tree(std::string t, const char * l, int size) : tag(t), lexeme(l, size) {}
+
+		// probably wont work with \n existing in input
+		void dump(std::vector<int> connections = {})
+		{
+			for (int i = 0; i < connections.size(); i++)
+				if (i == connections.size() - 1)
+					std::cout << char(179) << "  ";
+				else if (connections[i] <= 0)
+					std::cout << "   ";
+				else
+					std::cout << char(179) << "  ";
+			if (connections.size() > 0)
+				std::cout << "\n";
+
+			for (int i = 0; i < connections.size(); i++)
+				if (i == connections.size() - 1)
+					if (connections[i] <= 0)
+						std::cout << char(192) << char(196) << char(196);
+					else
+						std::cout << char(195) << char(196) << char(196);
+				else if (connections[i] <= 0)
+					std::cout << "   ";
+				else
+					std::cout << char(179) << "  ";
+			std::cout << tag << ": " << lexeme << "\n";
+
+			connections.push_back(children.size());
+
+			int size = connections.size();
+			for (auto child : children)
+			{
+				connections[size - 1] -= 1;
+				child->dump(connections);
+			}
+		}
+	};
+
 	const char* input;
 	const char* beginning;
 }
-bool TERM(const char *lit);
-bool DEFINITION();
-bool PROTOTYPE();
-bool PARAMETERS();
-bool RESTPARAMETERS();
-bool PARAM();
-bool BLOCK();
-bool DATASTART();
-bool DATA();
-bool RESTDATA();
-bool DECLARATIONSSTART();
-bool DECLARATIONS();
-bool VECTOR();
-bool VECTOR2();
-bool RESTVECTOR();
+bool TERM(const char *lit, Tree** result);
+bool DEFINITION(Tree** result);
+bool PROTOTYPE(Tree** result);
+bool PARAMETERS(Tree** result);
+bool RESTPARAMETERS(Tree** result);
+bool PARAM(Tree** result);
+bool BLOCK(Tree** result);
+bool DATASTART(Tree** result);
+bool DATA(Tree** result);
+bool RESTDATA(Tree** result);
+bool DECLARATIONSSTART(Tree** result);
+bool DECLARATIONS(Tree** result);
+bool VECTOR(Tree** result);
+bool VECTOR2(Tree** result);
+bool RESTVECTOR(Tree** result);
 
-bool LUA();
-bool NUM();
-bool STRING();
-bool IDENTIFIER();
+bool LUA(Tree** result);
+bool NUM(Tree** result);
+bool STRING(Tree** result);
+bool IDENTIFIER(Tree** result);
 
 
 void consumeWhitespace()
@@ -69,14 +114,15 @@ void consumeWhitespace()
 }
 
 
-bool TERM(const char *lit)
+bool TERM(const char *lit, Tree** result)
 {
 	int i;
 	for (i = 0; lit[i] != 0; i++)
 		if (input[i] != lit[i])
 			return false;
-	input += i;
+	*result = new Tree("TERM", input, i);
 
+	input += i;
 	//std::cout << "TERM('" << lit << "')\n";
 
 	consumeWhitespace();
@@ -84,175 +130,295 @@ bool TERM(const char *lit)
 	return true;
 }
 
-bool DEFINITION()
+bool DEFINITION(Tree** result)
 {
-	if (PROTOTYPE() && TERM("{") && BLOCK() && TERM("}"))
+	Tree* c1 = nullptr;
+	Tree* c2 = nullptr;
+	Tree* c3 = nullptr;
+	Tree* c4 = nullptr;
+	const char* start = input;
+	if (PROTOTYPE(&c1) && TERM("{", &c2) && BLOCK(&c3) && TERM("}", &c4))
 	{
+		*result = new Tree("DEFINITION", start, input - start);
+		(*result)->children.push_back(c1);
+		(*result)->children.push_back(c2);
+		(*result)->children.push_back(c3);
+		(*result)->children.push_back(c4);
 		//std::cout << "DEFINITION " << input << "\n";
 		return true;
 	}
+	delete c1;
+	delete c2;
+	delete c3;
+	delete c4;
 
 	return false;
 }
 
-bool PROTOTYPE()
+bool PROTOTYPE(Tree** result)
 {
-	if (IDENTIFIER() && TERM("(") && PARAMETERS() && TERM(")"))
+	Tree* c1 = nullptr;
+	Tree* c2 = nullptr;
+	Tree* c3 = nullptr;
+	Tree* c4 = nullptr;
+	const char* start = input;
+	if (IDENTIFIER(&c1) && TERM("(", &c2) && PARAMETERS(&c3) && TERM(")", &c4))
 	{
+		*result = new Tree("PROTOTYPE", start, input - start);
+		(*result)->children.push_back(c1);
+		(*result)->children.push_back(c2);
+		(*result)->children.push_back(c3);
+		(*result)->children.push_back(c4);
 		//std::cout << "PROTOTYPE" << " " << input << "\n";
 		return true;
 	}
+	delete c1;
+	delete c2;
+	delete c3;
+	delete c4;
 
 	return false;
 }
 
-bool PARAMETERS()
+bool PARAMETERS(Tree** result)
 {
-	if (PARAM() && RESTPARAMETERS())
+	Tree* c1 = nullptr;
+	Tree* c2 = nullptr;
+	const char* start = input;
+	if (PARAM(&c1) && RESTPARAMETERS(&c2))
 	{
+		*result = new Tree("PARAMETERS", start, input - start);
+		(*result)->children.push_back(c1);
+		(*result)->children.push_back(c2);
 		//std::cout << "PARAMETERS" << " " << input << "\n";
 		return true;
 	}
+	delete c1;
+	delete c2;
 	return false;
 }
 
-bool RESTPARAMETERS()
+bool RESTPARAMETERS(Tree** result)
 {
+	Tree* c1 = nullptr;
+	Tree* c2 = nullptr;
 	auto start = input;
-	if (TERM(",") && PARAMETERS())
+	if (TERM(",", &c1) && PARAMETERS(&c2))
 	{
+		*result = new Tree("RESTPARAMETERS", start, input - start);
+		(*result)->children.push_back(c1);
+		(*result)->children.push_back(c2);
 		//std::cout << "RESTPARAMETERS" << " " << input << "\n";
 		return true;
 	}
+	delete c1;
+	delete c2;
 	input = start;
+	*result = new Tree("RESTPARAMETERS", start, input - start);
 	return true;
 }
 
-bool PARAM()
+bool PARAM(Tree** result)
 {
+	Tree* c = nullptr;
 	auto start = input;
-	if (STRING() || LUA() || PROTOTYPE())
+	if (STRING(&c) || LUA(&c) || PROTOTYPE(&c))
 	{
+		*result = new Tree("PARAM", start, input - start);
+		(*result)->children.push_back(c);
 		//std::cout << "PARAM" << " " << input << "\n";
 		return true;
 	}
+	delete c;
 	input = start;
+	*result = new Tree("PARAM", start, input - start);
 	return true;
 }
 
-bool BLOCK()
+bool BLOCK(Tree** result)
 {
+	Tree* c = nullptr;
+	auto start = input;
 	// check lua before decl "Lua(" matches start of decl
-	if (DATASTART() || LUA() || DECLARATIONSSTART())
+	if (DATASTART(&c) || LUA(&c) || DECLARATIONSSTART(&c))
 	{
+		*result = new Tree("BLOCK", start, input - start);
+		(*result)->children.push_back(c);
 		//std::cout << "BLOCK" << " " << input << "\n";
 		return true;
 	}
+	delete c;
 	return false;
 }
 
 
-bool DATASTART()
+bool DATASTART(Tree** result)
 {
-	if (VECTOR() && RESTDATA())
+	Tree* c1 = nullptr;
+	Tree* c2 = nullptr;
+	auto start = input;
+	if (VECTOR(&c1) && RESTDATA(&c2))
 	{
+		*result = new Tree("DATASTART", start, input - start);
+		(*result)->children.push_back(c1);
+		(*result)->children.push_back(c2);
 		//std::cout << "DATA" << " " << input << "\n";
 		return true;
 	}
+	delete c1;
+	delete c2;
 	return false;
 }
 
-bool DATA()
+bool DATA(Tree** result)
 {
+	Tree* c1 = nullptr;
+	Tree* c2 = nullptr;
 	auto start = input;
-	if (VECTOR() && RESTDATA())
+	if (VECTOR(&c1) && RESTDATA(&c2))
 	{
+		*result = new Tree("DATA", start, input - start);
+		(*result)->children.push_back(c1);
+		(*result)->children.push_back(c2);
 		//std::cout << "DATA" << " " << input << "\n";
 		return true;
 	}
 	input = start;
-
+	*result = new Tree("DATA", start, input - start);
+	delete c1;
+	delete c2;
 	return true;
 }
 
-bool RESTDATA()
+bool RESTDATA(Tree** result)
 {
+	Tree* c1 = nullptr;
+	Tree* c2 = nullptr;
 	auto start = input;
-	if (TERM(",") && DATA())
+	if (TERM(",", &c1) && DATA(&c2))
 	{
+		*result = new Tree("RESTDATA", start, input - start);
+		(*result)->children.push_back(c1);
+		(*result)->children.push_back(c2);
 		//std::cout << "RESTDATA" << " " << input << "\n";
 		return true;
 	}
 	input = start;
+	*result = new Tree("RESTDATA", start, input - start);
+	delete c1;
+	delete c2;
 
 	return true;
 }
 
-bool DECLARATIONSSTART()
+bool DECLARATIONSSTART(Tree** result)
 {
-	if (PROTOTYPE() && DECLARATIONS())
+	Tree* c1 = nullptr;
+	Tree* c2 = nullptr;
+	auto start = input;
+	if (PROTOTYPE(&c1) && DECLARATIONS(&c2))
 	{
+		*result = new Tree("DECLARATIONSSTART", start, input - start);
+		(*result)->children.push_back(c1);
+		(*result)->children.push_back(c2);
 		//std::cout << "DECLARATIONS" << " " << input << "\n";
 		return true;
 	}
+	delete c1;
+	delete c2;
 
 	return false;
 }
 
-bool DECLARATIONS()
+bool DECLARATIONS(Tree** result)
 {
+	Tree* c1 = nullptr;
+	Tree* c2 = nullptr;
 	auto start = input;
-	if (PROTOTYPE() && DECLARATIONS())
+	if (PROTOTYPE(&c1) && DECLARATIONS(&c2))
 	{
+		*result = new Tree("DECLARATIONS", start, input - start);
+		(*result)->children.push_back(c1);
+		(*result)->children.push_back(c2);
 		//std::cout << "DECLARATIONS" << " " << input << "\n";
 		return true;
 	}
 	input = start;
-
+	*result = new Tree("DECLARATIONS", start, input - start);
+	delete c1;
+	delete c2;
 	return true;
 }
 
-bool VECTOR()
+bool VECTOR(Tree** result)
 {
-	if (TERM("(") && VECTOR2() && TERM(")"))
+	Tree* c1 = nullptr;
+	Tree* c2 = nullptr;
+	Tree* c3 = nullptr;
+	auto start = input;
+	if (TERM("(", &c1) && VECTOR2(&c2) && TERM(")", &c3))
 	{
+		*result = new Tree("VECTOR", start, input - start);
+		(*result)->children.push_back(c1);
+		(*result)->children.push_back(c2);
+		(*result)->children.push_back(c3);
 		//std::cout << "VECTOR" << " " << input << "\n";
 		return true;
 	}
+	delete c1;
+	delete c2;
+	delete c3;
 	return false;
 }
 
-bool VECTOR2()
+bool VECTOR2(Tree** result)
 {
-	if (NUM() && RESTVECTOR())
+	Tree* c1 = nullptr;
+	Tree* c2 = nullptr;
+	auto start = input;
+	if (NUM(&c1) && RESTVECTOR(&c2))
 	{
+		*result = new Tree("VECTOR2", start, input - start);
+		(*result)->children.push_back(c1);
+		(*result)->children.push_back(c2);
 		//std::cout << "VECTOR2" << " " << input << "\n";
 		return true;
 	}
+	delete c1;
+	delete c2;
 	return false;
 }
 
-bool RESTVECTOR()
+bool RESTVECTOR(Tree** result)
 {
+	Tree* c1 = nullptr;
+	Tree* c2 = nullptr;
 	auto start = input;
-	if (TERM(",") && VECTOR2())
+	if (TERM(",", &c1) && VECTOR2(&c2))
 	{
+		*result = new Tree("RESTVECTOR", start, input - start);
+		(*result)->children.push_back(c1);
+		(*result)->children.push_back(c2);
 		//std::cout << "RESTVECTOR" << " " << input << "\n";
 		return true;
 	}
 	input = start;
+	*result = new Tree("RESTVECTOR", start, input - start);
+	delete c1;
+	delete c2;
 	return true;
 }
 
-bool LUA()
+bool LUA(Tree** result)
 {
 	int consumed = matchLua(input);
 	if (consumed > 0)
 	{
+		*result = new Tree("LUA", input, consumed);
+
 		input += consumed;
 
 		consumeWhitespace();
-
 
 		//std::cout << "LUA" << " " << input << "\n";
 
@@ -261,11 +427,13 @@ bool LUA()
 	return false;
 }
 
-bool NUM()
+bool NUM(Tree** result)
 {
 	int consumed = matchDecimal(input);
 	if (consumed > 0)
 	{
+		*result = new Tree("NUM", input, consumed);
+
 		input += consumed;
 
 		consumeWhitespace();
@@ -276,11 +444,13 @@ bool NUM()
 	return false;
 }
 
-bool STRING()
+bool STRING(Tree** result)
 {
 	int consumed = matchString(input);
 	if (consumed > 0)
 	{
+		*result = new Tree("STRING", input, consumed);
+
 		input += consumed;
 
 		consumeWhitespace();
@@ -291,11 +461,13 @@ bool STRING()
 	return false;
 }
 
-bool IDENTIFIER()
+bool IDENTIFIER(Tree** result)
 {
 	int consumed = matchIdentifier(input);
 	if (consumed > 0)
 	{
+		*result = new Tree("IDENTIFIER", input, consumed);
+
 		input += consumed;
 
 		consumeWhitespace();
@@ -332,12 +504,16 @@ void testScene(const std::string & path)
 	input = scene.c_str();
 	beginning = input;
 
+	std::vector<Tree*> roots;
+
 	bool run = true;
 	while (run)
 	{
-		if (DEFINITION())
+		Tree* child;
+		if (DEFINITION(&child))
 		{
 			std::cout << "DEFINITION syntax ok\n";
+			roots.push_back(child);
 		}
 		else
 		{
@@ -354,5 +530,10 @@ void testScene(const std::string & path)
 		{
 			run = false;
 		}
+	}
+
+	for (auto& root : roots)
+	{
+		root->dump();
 	}
 }

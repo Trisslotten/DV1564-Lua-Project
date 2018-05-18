@@ -5,18 +5,22 @@
 
 /*
 
+
 DEFINITION : PROTOTYPE "{" BLOCK "}"
 PROTOTYPE : IDENTIFIER "(" PARAMETERS ")"
 PARAMETERS : PARAM RESTPARAMETERS | empty
 RESTPARAMETERS : "," PARAMETERS
 PARAM : STRING | LUA | PROTOTYPE | empty
-BLOCK : DATA | DECLARATIONS | LUA
+BLOCK : DATASTART | LUA | DECLARATIONSSTART
+DATASTART: VECTOR RESTDATA
 DATA : VECTOR RESTDATA | empty
 RESTDATA : "," DATA | empty
+DECLARATIONSSTART: PROTOTYPE DECLARATIONS
 DECLARATIONS : PROTOTYPE DECLARATIONS | empty
 VECTOR : "(" VECTOR2 ")"
 VECTOR2 : NUM RESTVECTOR
 RESTVECTOR : "," VECTOR2 | empty
+
 
 
 
@@ -30,6 +34,7 @@ LUA
 namespace
 {
 	const char* input;
+	const char* beginning;
 }
 bool TERM(const char *lit);
 bool DEFINITION();
@@ -38,8 +43,10 @@ bool PARAMETERS();
 bool RESTPARAMETERS();
 bool PARAM();
 bool BLOCK();
+bool DATASTART();
 bool DATA();
 bool RESTDATA();
+bool DECLARATIONSSTART();
 bool DECLARATIONS();
 bool VECTOR();
 bool VECTOR2();
@@ -55,7 +62,10 @@ void consumeWhitespace()
 {
 	int consumed = matchWhitespace(input);
 	if (consumed > 0)
+	{
+		
 		input += consumed;
+	}
 }
 
 
@@ -132,12 +142,23 @@ bool PARAM()
 
 bool BLOCK()
 {
-	if (DATA() || DECLARATIONS() || LUA())
+	// check lua before decl "Lua(" matches start of decl
+	if (DATASTART() || LUA() || DECLARATIONSSTART())
 	{
 		//std::cout << "BLOCK" << " " << input << "\n";
 		return true;
 	}
+	return false;
+}
 
+
+bool DATASTART()
+{
+	if (VECTOR() && RESTDATA())
+	{
+		//std::cout << "DATA" << " " << input << "\n";
+		return true;
+	}
 	return false;
 }
 
@@ -165,6 +186,17 @@ bool RESTDATA()
 	input = start;
 
 	return true;
+}
+
+bool DECLARATIONSSTART()
+{
+	if (PROTOTYPE() && DECLARATIONS())
+	{
+		//std::cout << "DECLARATIONS" << " " << input << "\n";
+		return true;
+	}
+
+	return false;
 }
 
 bool DECLARATIONS()
@@ -298,6 +330,7 @@ void testScene(const std::string & path)
 {
 	std::string scene = loadFile(path);
 	input = scene.c_str();
+	beginning = input;
 
 	bool run = true;
 	while (run)
@@ -308,11 +341,16 @@ void testScene(const std::string & path)
 		}
 		else
 		{
-			std::cout << "DEFINITION syntax error!\n";
+			int lines = 0;
+			for (const char* i = beginning; i != input; i++)
+				if (*i == '\n')
+					lines++;
+
+			std::cout << "DEFINITION syntax error near line " << lines << "!\n";
 			run = false;
 		}
-
-		if (input == '\0')
+		std::string inputleft = input;
+		if (inputleft.empty())
 		{
 			run = false;
 		}

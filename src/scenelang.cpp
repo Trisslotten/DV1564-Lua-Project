@@ -9,7 +9,9 @@
 
 
 DEFINITION : PROTOTYPE "{" BLOCK "}"
-PROTOTYPE : IDENTIFIER "(" PARAMETERS ")"
+PROTOTYPE : IDENTIFIER "(" PARAMETERSSTART ")"
+// for clean parse tree
+PARAMETERSSTART : PARAM RESTPARAMETERS | empty
 PARAMETERS : PARAM RESTPARAMETERS | empty
 RESTPARAMETERS : "," PARAMETERS
 PARAM : STRING | LUA | PROTOTYPE | empty
@@ -84,6 +86,7 @@ namespace
 bool TERM(const char *lit, Tree** result);
 bool DEFINITION(Tree** result);
 bool PROTOTYPE(Tree** result);
+bool PARAMETERSSTART(Tree** result);
 bool PARAMETERS(Tree** result);
 bool RESTPARAMETERS(Tree** result);
 bool PARAM(Tree** result);
@@ -120,7 +123,7 @@ bool TERM(const char *lit, Tree** result)
 	for (i = 0; lit[i] != 0; i++)
 		if (input[i] != lit[i])
 			return false;
-	*result = new Tree("TERM", input, i);
+	//*result = new Tree("TERM", input, i);
 
 	input += i;
 	//std::cout << "TERM('" << lit << "')\n";
@@ -141,9 +144,9 @@ bool DEFINITION(Tree** result)
 	{
 		*result = new Tree("DEFINITION", start, input - start);
 		(*result)->children.push_back(c1);
-		(*result)->children.push_back(c2);
+		//(*result)->children.push_back(c2);
 		(*result)->children.push_back(c3);
-		(*result)->children.push_back(c4);
+		//(*result)->children.push_back(c4);
 		//std::cout << "DEFINITION " << input << "\n";
 		return true;
 	}
@@ -162,13 +165,13 @@ bool PROTOTYPE(Tree** result)
 	Tree* c3 = nullptr;
 	Tree* c4 = nullptr;
 	const char* start = input;
-	if (IDENTIFIER(&c1) && TERM("(", &c2) && PARAMETERS(&c3) && TERM(")", &c4))
+	if (IDENTIFIER(&c1) && TERM("(", &c2) && PARAMETERSSTART(&c3) && TERM(")", &c4))
 	{
 		*result = new Tree("PROTOTYPE", start, input - start);
 		(*result)->children.push_back(c1);
-		(*result)->children.push_back(c2);
+		//(*result)->children.push_back(c2);
 		(*result)->children.push_back(c3);
-		(*result)->children.push_back(c4);
+		//(*result)->children.push_back(c4);
 		//std::cout << "PROTOTYPE" << " " << input << "\n";
 		return true;
 	}
@@ -180,16 +183,38 @@ bool PROTOTYPE(Tree** result)
 	return false;
 }
 
+
+bool PARAMETERSSTART(Tree** result)
+{
+	Tree* c1 = nullptr;
+	Tree* c2 = nullptr;
+	const char* start = input;
+	*result = new Tree("PARAMETERS", start, input - start);
+	if (PARAM(&c1) && RESTPARAMETERS(result))
+	{
+		(*result)->children.push_back(c1);
+		//(*result)->children.push_back(c2);
+		//std::cout << "PARAMETERS" << " " << input << "\n";
+
+		(*result)->children.reverse();
+		return true;
+	}
+	
+	delete c1;
+	delete c2;
+	return false;
+}
+
 bool PARAMETERS(Tree** result)
 {
 	Tree* c1 = nullptr;
 	Tree* c2 = nullptr;
 	const char* start = input;
-	if (PARAM(&c1) && RESTPARAMETERS(&c2))
+	if (PARAM(&c1) && RESTPARAMETERS(result))
 	{
-		*result = new Tree("PARAMETERS", start, input - start);
+		//*result = new Tree("PARAMETERS", start, input - start);
 		(*result)->children.push_back(c1);
-		(*result)->children.push_back(c2);
+		//(*result)->children.push_back(c2);
 		//std::cout << "PARAMETERS" << " " << input << "\n";
 		return true;
 	}
@@ -203,18 +228,18 @@ bool RESTPARAMETERS(Tree** result)
 	Tree* c1 = nullptr;
 	Tree* c2 = nullptr;
 	auto start = input;
-	if (TERM(",", &c1) && PARAMETERS(&c2))
+	if (TERM(",", &c1) && PARAMETERS(result))
 	{
-		*result = new Tree("RESTPARAMETERS", start, input - start);
-		(*result)->children.push_back(c1);
-		(*result)->children.push_back(c2);
+		//*result = new Tree("RESTPARAMETERS", start, input - start);
+		//(*result)->children.push_back(c1);
+		//(*result)->children.push_back(c2);
 		//std::cout << "RESTPARAMETERS" << " " << input << "\n";
 		return true;
 	}
 	delete c1;
 	delete c2;
 	input = start;
-	*result = new Tree("RESTPARAMETERS", start, input - start);
+	//*result = new Tree("RESTPARAMETERS", start, input - start);
 	return true;
 }
 
@@ -257,11 +282,14 @@ bool DATASTART(Tree** result)
 	Tree* c1 = nullptr;
 	Tree* c2 = nullptr;
 	auto start = input;
-	if (VECTOR(&c1) && RESTDATA(&c2))
+	*result = new Tree("DATA", start, input - start);
+	if (VECTOR(&c1) && RESTDATA(result))
 	{
-		*result = new Tree("DATASTART", start, input - start);
+		// *result = new Tree("DATASTART", start, input - start);
 		(*result)->children.push_back(c1);
-		(*result)->children.push_back(c2);
+
+		(*result)->children.reverse();
+		//(*result)->children.push_back(c2);
 		//std::cout << "DATA" << " " << input << "\n";
 		return true;
 	}
@@ -275,16 +303,15 @@ bool DATA(Tree** result)
 	Tree* c1 = nullptr;
 	Tree* c2 = nullptr;
 	auto start = input;
-	if (VECTOR(&c1) && RESTDATA(&c2))
+	if (VECTOR(&c1) && RESTDATA(result))
 	{
-		*result = new Tree("DATA", start, input - start);
 		(*result)->children.push_back(c1);
-		(*result)->children.push_back(c2);
+		//(*result)->children.push_back(c2);
 		//std::cout << "DATA" << " " << input << "\n";
 		return true;
 	}
 	input = start;
-	*result = new Tree("DATA", start, input - start);
+	//*result = new Tree("DATA", start, input - start);
 	delete c1;
 	delete c2;
 	return true;
@@ -295,16 +322,16 @@ bool RESTDATA(Tree** result)
 	Tree* c1 = nullptr;
 	Tree* c2 = nullptr;
 	auto start = input;
-	if (TERM(",", &c1) && DATA(&c2))
+	if (TERM(",", &c1) && DATA(result))
 	{
-		*result = new Tree("RESTDATA", start, input - start);
-		(*result)->children.push_back(c1);
-		(*result)->children.push_back(c2);
+		//*result = new Tree("RESTDATA", start, input - start);
+		//(*result)->children.push_back(c1);
+		//(*result)->children.push_back(c2);
 		//std::cout << "RESTDATA" << " " << input << "\n";
 		return true;
 	}
 	input = start;
-	*result = new Tree("RESTDATA", start, input - start);
+	//*result = new Tree("RESTDATA", start, input - start);
 	delete c1;
 	delete c2;
 
@@ -318,7 +345,8 @@ bool DECLARATIONSSTART(Tree** result)
 	auto start = input;
 	if (PROTOTYPE(&c1) && DECLARATIONS(&c2))
 	{
-		*result = new Tree("DECLARATIONSSTART", start, input - start);
+		//*result = new Tree("DECLARATIONSSTART", start, input - start);
+		*result = new Tree("DECLARATIONS", start, input - start);
 		(*result)->children.push_back(c1);
 		(*result)->children.push_back(c2);
 		//std::cout << "DECLARATIONS" << " " << input << "\n";
@@ -356,12 +384,13 @@ bool VECTOR(Tree** result)
 	Tree* c2 = nullptr;
 	Tree* c3 = nullptr;
 	auto start = input;
-	if (TERM("(", &c1) && VECTOR2(&c2) && TERM(")", &c3))
+	*result = new Tree("VECTOR", start, input - start);
+	if (TERM("(", &c1) && VECTOR2(result) && TERM(")", &c3))
 	{
-		*result = new Tree("VECTOR", start, input - start);
-		(*result)->children.push_back(c1);
-		(*result)->children.push_back(c2);
-		(*result)->children.push_back(c3);
+		(*result)->children.reverse();
+		//(*result)->children.push_back(c1);
+		//(*result)->children.push_back(c2);
+		//(*result)->children.push_back(c3);
 		//std::cout << "VECTOR" << " " << input << "\n";
 		return true;
 	}
@@ -376,11 +405,11 @@ bool VECTOR2(Tree** result)
 	Tree* c1 = nullptr;
 	Tree* c2 = nullptr;
 	auto start = input;
-	if (NUM(&c1) && RESTVECTOR(&c2))
+	if (NUM(&c1) && RESTVECTOR(result))
 	{
-		*result = new Tree("VECTOR2", start, input - start);
+		//*result = new Tree("VECTOR", start, input - start);
 		(*result)->children.push_back(c1);
-		(*result)->children.push_back(c2);
+		//(*result)->children.push_back(c2);
 		//std::cout << "VECTOR2" << " " << input << "\n";
 		return true;
 	}
@@ -394,16 +423,16 @@ bool RESTVECTOR(Tree** result)
 	Tree* c1 = nullptr;
 	Tree* c2 = nullptr;
 	auto start = input;
-	if (TERM(",", &c1) && VECTOR2(&c2))
+	if (TERM(",", &c1) && VECTOR2(result))
 	{
-		*result = new Tree("RESTVECTOR", start, input - start);
-		(*result)->children.push_back(c1);
-		(*result)->children.push_back(c2);
+		//*result = new Tree("RESTVECTOR", start, input - start);
+		//(*result)->children.push_back(c1);
+		//(*result)->children.push_back(c2);
 		//std::cout << "RESTVECTOR" << " " << input << "\n";
 		return true;
 	}
 	input = start;
-	*result = new Tree("RESTVECTOR", start, input - start);
+	//*result = new Tree("VECTOREND", start, input - start);
 	delete c1;
 	delete c2;
 	return true;

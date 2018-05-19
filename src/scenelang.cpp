@@ -567,10 +567,131 @@ std::vector<Tree*> generateTree(std::string source)
 	return roots;
 }
 
-
 SceneMesh* extractMeshLua(Tree* lua)
 {
-	return nullptr;
+	lua_State* L = luaL_newstate();
+	luaL_openlibs(L);
+
+	if (luaL_loadstring(L, lua->lexeme.c_str()) || lua_pcall(L, 0, 1, 0))
+	{
+		std::cerr << "SCENE ERROR: Mesh Lua: " << lua_tostring(L, -1) << '\n';
+		lua_close(L);
+		return nullptr;
+	}
+
+	if (!lua_istable(L, 1))
+	{
+		std::cerr << "SCENE ERROR: Mesh Lua: did not return a table\n";
+		lua_close(L);
+		return nullptr;
+	}
+
+
+	lua_len(L, 1);
+	int numVertices = lua_tonumber(L, -1);
+	lua_pop(L, 1);
+	if (numVertices == 0)
+	{
+		std::cerr << "SCENE ERROR: Mesh Lua: no vertices\n";
+		lua_close(L);
+		return nullptr;
+	}
+		
+	if (numVertices % 3 != 0)
+	{
+		std::cerr << "SCENE ERROR: Mesh Lua: number of vertices not multiple of 3\n";
+		lua_close(L);
+		return nullptr;
+	}
+
+	int vectorSize = -1;
+
+
+	std::vector<irr::core::vector3df> positions;
+	positions.reserve(numVertices);
+	std::vector<irr::core::vector2df> texCoords;
+	texCoords.reserve(numVertices);
+
+
+	for (int i = 0; i < numVertices; i++)
+	{
+		lua_rawgeti(L, 1, i + 1);
+		if (!lua_istable(L, -1))
+		{
+			std::cerr << "SCENE ERROR: Mesh Lua: vertex not a table\n";
+			lua_close(L);
+			return nullptr;
+		}
+
+		lua_len(L, -1);
+		int numCoords = lua_tonumber(L, -1);
+		lua_pop(L, 1);
+
+		if (numCoords != 3 && numCoords != 5)
+		{
+			std::cerr << "SCENE ERROR: Mesh Lua: expected 3 or 3 + 2 coords, got: " << numCoords << "\n";
+			lua_close(L);
+			return nullptr;
+		}
+
+		if (vectorSize < 0)
+		{
+			vectorSize = numCoords;
+		}
+
+		if (vectorSize != numCoords)
+		{
+			std::cerr << "SCENE ERROR: Mesh Lua: number of vector components mismatch\n";
+			lua_close(L);
+			return nullptr;
+		}
+		
+
+		irr::core::vector3df pos;
+		irr::core::vector2df tex;
+		for (int j = 0; j < vectorSize; j++)
+		{
+			lua_rawgeti(L, -1, j + 1);
+			if (!lua_isnumber(L, -1))
+			{
+				std::cerr << "SCENE ERROR: Mesh Lua: coord non-numeric\n";
+				lua_close(L);
+				return nullptr;
+			}
+			switch (j)
+			{
+			case 0:
+				pos.X = lua_tonumber(L, -1);
+				break;
+			case 1:
+				pos.Y = lua_tonumber(L, -1);
+				break;
+			case 2:
+				pos.Z = lua_tonumber(L, -1);
+				break;
+			case 3:
+				tex.X = lua_tonumber(L, -1);
+				break;
+			case 4:
+				tex.Y = lua_tonumber(L, -1);
+				break;
+			}
+			lua_pop(L, 1);
+		}
+		lua_pop(L, 1);
+		positions.push_back(pos);
+		if(vectorSize == 5)
+			texCoords.push_back(tex);
+	}
+	lua_pop(L, 1);
+
+	SceneMesh* result = new SceneMesh();
+	result->positions = positions;
+	result->texCoords = texCoords;
+	result->hasTexCoords = vectorSize == 5;
+
+	lua_close(L);
+	return result;
 }
 
 SceneMesh* extractMeshData(Tree* data)
@@ -681,6 +802,13 @@ SceneMesh* extractMesh(Tree* def)
 	return result;
 }
 
+
+
+SceneTexture* extractTextureLua(Tree* data)
+{
+	return nullptr;
+}
+
 SceneTexture* extractTextureData(Tree* data)
 {
 	SceneTexture* result = new SceneTexture();
@@ -743,7 +871,7 @@ SceneTexture* extractTexture(Tree* def)
 	}
 	if (blockContentTag == "LUA")
 	{
-		//result = extractTextureLua(block->children.front());
+		result = extractTextureLua(block->children.front());
 	}
 	if (result)
 	{

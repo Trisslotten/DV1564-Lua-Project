@@ -341,6 +341,8 @@ static int lb_bind(lua_State* L)
 
 	return 0;
 }
+
+
 static int lb_loadScene(lua_State* L)
 {
 	int numArgs = lua_gettop(L);

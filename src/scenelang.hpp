@@ -32,19 +32,19 @@ LUA
 */
 
 
-
-
-struct SceneVertex
-{
-	irr::core::vector3df position;
-	irr::core::vector2df texCoords;
-};
-
 struct SceneMesh
 {
 	std::string name;
 	bool hasTexCoords = false;
-	std::vector<SceneVertex> vertices;
+	std::vector<irr::core::vector3df> positions;
+	std::vector<irr::core::vector2df> texCoords;
+};
+
+struct SceneTexture
+{
+	std::string name;
+	int size;
+	std::vector<uint8_t> colors;
 };
 
 

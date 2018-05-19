@@ -63,8 +63,8 @@ int main()
 	irr::gui::IGUIEnvironment* guienv = device->getGUIEnvironment();
 
 
+	testScene("testscene.txt");
 	loadScene("testscene.txt", device);
-
 
 	irr::SKeyMap keys[4];
 	keys[0].Action = irr::EKA_MOVE_FORWARD;

@@ -153,6 +153,7 @@
   <ItemGroup>
     <ClInclude Include="bindings.hpp" />
     <ClInclude Include="irrwrapper.hpp" />
+    <ClInclude Include="misc.hpp" />
     <ClInclude Include="regex.hpp" />
     <ClInclude Include="regexlib.hpp" />
     <ClInclude Include="scenelang.hpp" />

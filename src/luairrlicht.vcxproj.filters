@@ -50,5 +50,8 @@
     <ClInclude Include="regex.hpp">
       <Filter>Source Files\scenelang</Filter>
     </ClInclude>
+    <ClInclude Include="misc.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

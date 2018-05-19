@@ -7,23 +7,7 @@
 #include <vector>
 #include "irrwrapper.hpp"
 #include "scenelang.hpp"
-
-
-void setVec(irr::core::vector3df& vec, int i, float value)
-{
-	switch (i)
-	{
-	case 0:
-		vec.X = value;
-		break;
-	case 1:
-		vec.Y = value;
-		break;
-	case 2:
-		vec.Z = value;
-		break;
-	}
-}
+#include "misc.hpp"
 
 static int lb_snapshot(lua_State* L)
 {

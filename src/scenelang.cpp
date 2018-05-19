@@ -4,7 +4,9 @@
 #include <vector>
 #include <list>
 #include <map>
+#include "irrwrapper.hpp"
 #include "regex.hpp"
+#include "misc.hpp"
 
 /*
 
@@ -199,13 +201,13 @@ bool PARAMETERSSTART(Tree** result)
 	Tree* c2 = nullptr;
 	const char* start = input;
 	*result = new Tree("PARAMETERS", start, input - start);
-	if (PARAM(&c1) && RESTPARAMETERS(result))
+	if (PARAM(result) && RESTPARAMETERS(result))
 	{
-		(*result)->children.push_back(c1);
+		//(*result)->children.push_back(c1);
 		//(*result)->children.push_back(c2);
 		//std::cout << "PARAMETERS" << " " << input << "\n";
 
-		(*result)->children.reverse();
+		//(*result)->children.reverse();
 		return true;
 	}
 	
@@ -219,10 +221,10 @@ bool PARAMETERS(Tree** result)
 	Tree* c1 = nullptr;
 	Tree* c2 = nullptr;
 	const char* start = input;
-	if (PARAM(&c1) && RESTPARAMETERS(result))
+	if (PARAM(result) && RESTPARAMETERS(result))
 	{
 		//*result = new Tree("PARAMETERS", start, input - start);
-		(*result)->children.push_back(c1);
+		//(*result)->children.push_back(c1);
 		//(*result)->children.push_back(c2);
 		//std::cout << "PARAMETERS" << " " << input << "\n";
 		return true;
@@ -258,7 +260,7 @@ bool PARAM(Tree** result)
 	auto start = input;
 	if (STRING(&c) || LUA(&c) || PROTOTYPE(&c))
 	{
-		*result = new Tree("PARAM", start, input - start);
+		//*result = new Tree("PARAM", start, input - start);
 		(*result)->children.push_back(c);
 		//std::cout << "PARAM" << " " << input << "\n";
 		return true;
@@ -487,7 +489,8 @@ bool STRING(Tree** result)
 	int consumed = matchString(input);
 	if (consumed > 0)
 	{
-		*result = new Tree("STRING", input, consumed);
+		// remove quotation marks
+		*result = new Tree("STRING", input+1, consumed-2);
 
 		input += consumed;
 
@@ -514,6 +517,11 @@ bool IDENTIFIER(Tree** result)
 		return true;
 	}
 	return false;
+}
+
+std::string removeQuot(const std::string& str)
+{
+	return str.substr(1, str.size() - 2);
 }
 
 std::vector<Tree*> generateTree(const std::string& source)
@@ -552,7 +560,7 @@ std::vector<Tree*> generateTree(const std::string& source)
 
 SceneMesh* extractMeshLua(Tree* lua)
 {
-
+	return nullptr;
 }
 
 SceneMesh* extractMeshData(Tree* data)
@@ -560,29 +568,175 @@ SceneMesh* extractMeshData(Tree* data)
 	SceneMesh* result = new SceneMesh();
 
 
+	int vectorSize = data->children.front()->children.size();
+
+	if (vectorSize == 5)
+	{
+		result->hasTexCoords = true;
+	}
+
+	for (auto vector : data->children)
+	{
+		int currVectorSize = vector->children.size();
+		
+		if (currVectorSize != 3 && currVectorSize != 5)
+		{
+			delete result;
+			std::cerr << "SCENE ERROR: Vector wrong size\n";
+			return nullptr;
+		}
+		if (currVectorSize != vectorSize)
+		{
+			delete result;
+			std::cerr << "SCENE ERROR: Vector size mismatch\n";
+			return nullptr;
+		}
+
+		irr::core::vector3df pos;
+		irr::core::vector2df tex;
+		int i = 0;
+		for (auto x : vector->children)
+		{
+			float num = std::stof(x->lexeme);
+			switch (i)
+			{
+			case 0:
+				pos.X = num;
+				break;
+			case 1:
+				pos.Y = num;
+				break;
+			case 2:
+				pos.Z = num;
+				break;
+			case 3:
+				tex.X = num;
+				break;
+			case 4:
+				tex.Y = num;
+				break;
+			}
+			i++;
+		}
+		result->positions.push_back(pos);
+		result->texCoords.push_back(tex);
+	}
+
+	return result;
 }
 
-SceneMesh* extractMesh(Tree* block)
+
+
+
+
+SceneMesh* extractMesh(Tree* def)
 {
-	std::string tag = block->children.front()->tag;
-	if (tag == "DECLARATIONS")
+	Tree* prototype = def->children.front();
+	Tree* identifier = prototype->children.front();
+	Tree* parameters = prototype->children.back();
+	if (parameters->children.empty())
+	{
+		std::cerr << "SCENE ERROR: Expected parameter in 'Mesh'\n";
+		return nullptr;
+	}
+	Tree* firstparam = parameters->children.front();
+	if (firstparam->tag != "STRING")
+	{
+		std::cerr << "SCENE ERROR: Expected name (string) as parameter in 'Mesh'\n";
+		return nullptr;
+	}
+
+	Tree* block = def->children.back();
+	std::string blockContentTag = block->children.front()->tag;
+	if (blockContentTag == "DECLARATIONS")
 	{
 		std::cerr << "SCENE ERROR: Declarations in 'Mesh', expected Lua or raw vertex data\n";
 		return nullptr;
 	}
 
-	SceneMesh* result;
-	if (tag == "DATA")
+	SceneMesh* result = nullptr;
+	if (blockContentTag == "DATA")
 	{
 		result = extractMeshData(block->children.front());
 	}
-	if (tag == "LUA")
+	if (blockContentTag == "LUA")
 	{
 		result = extractMeshLua(block->children.front());
 	}
 	if (result)
 	{
-		
+		result->name = parameters->children.front()->lexeme;
+	}
+	return result;
+}
+
+SceneTexture* extractTextureData(Tree* data)
+{
+	SceneTexture* result = new SceneTexture();
+
+	int numColors = data->children.size();
+	int root = sqrt(numColors);
+	if (root * root != numColors)
+	{
+		delete result;
+		std::cerr << "SCENE ERROR: Texture was not a square\n";
+		return nullptr;
+	}
+	result->size = root;
+
+	for (auto color : data->children)
+	{
+		if (color->children.size() != 3)
+		{
+			delete result;
+			std::cerr << "SCENE ERROR: Color in Texture must have exactly 3 components\n";
+		}
+
+		for (auto comp : color->children)
+		{
+			float val = std::stof(comp->lexeme);
+			result->colors.push_back(val * 255);
+		}
+	}
+	return result;
+}
+
+SceneTexture* extractTexture(Tree* def)
+{
+	Tree* prototype = def->children.front();
+	Tree* identifier = prototype->children.front();
+	Tree* parameters = prototype->children.back();
+	if (parameters->children.empty())
+	{
+		std::cerr << "SCENE ERROR: Expected parameter in 'Texture'\n";
+		return nullptr;
+	}
+	Tree* firstparam = parameters->children.front();
+	if (firstparam->tag != "STRING")
+	{
+		std::cerr << "SCENE ERROR: Expected name (string) as parameter in 'Texture'\n";
+		return nullptr;
+	}
+	Tree* block = def->children.back();
+	std::string blockContentTag = block->children.front()->tag;
+	if (blockContentTag == "DECLARATIONS")
+	{
+		std::cerr << "SCENE ERROR: Declarations in 'Texture', expected Lua or raw color data\n";
+		return nullptr;
+	}
+
+	SceneTexture* result = nullptr;
+	if (blockContentTag == "DATA")
+	{
+		result = extractTextureData(block->children.front());
+	}
+	if (blockContentTag == "LUA")
+	{
+		//result = extractTextureLua(block->children.front());
+	}
+	if (result)
+	{
+		result->name = parameters->children.front()->lexeme;
 	}
 	return result;
 }
@@ -591,41 +745,77 @@ SceneMesh* extractMesh(Tree* block)
 bool loadScene(const std::string & path, irr::IrrlichtDevice * d)
 {
 	std::string scene = loadFile(path);
-	auto roots = generateTree(scene);
+	auto defs = generateTree(scene);
 
 
 	std::map<std::string, SceneMesh*> meshes;
+	std::map<std::string, SceneTexture*> textures;
+
+	Tree* sceneDef = nullptr;
 
 	std::cout << "Extracting data from syntax tree...\n";
-	for (auto root : roots)
+	for (auto def : defs)
 	{
-		auto prototype = root->children.front();
+		auto prototype = def->children.front();
 		std::string identifier = prototype->children.front()->lexeme;
 		std::cout << identifier << "\n";
 
 		if (identifier == "Mesh")
 		{
-			auto mesh = extractMesh(root->children.back());
+			auto mesh = extractMesh(def);
 			if (mesh)
 			{
 				meshes[mesh->name] = mesh;
 			}
 			continue;
 		}
-
 		if (identifier == "Texture")
 		{
-
+			auto texture = extractTexture(def);
+			if (texture)
+			{
+				textures[texture->name] = texture;
+			}
 			continue;
 		}
-
 		if (identifier == "Scene")
 		{
-
+			if (sceneDef)
+			{
+				std::cerr << "SCENE ERROR: Cannot have multiple scene definitions, skipping\n";
+			}
+			else
+			{
+				sceneDef = def;
+			}
 			continue;
 		}
+		std::cout << "SCENE ERROR: Unknown definition: '" << identifier << "', skipping\n";
+	}
 
 
+
+	for (auto[name, texture] : textures)
+	{
+		addTexture(d->getVideoDriver(), texture->name, texture->colors, texture->size, texture->size);
+	}
+
+
+	for (auto [name, mesh] : meshes)
+	{
+		if (mesh->hasTexCoords)
+		{
+			addMesh(d, mesh->positions, mesh->texCoords, name);
+		}
+		else
+		{
+			addMesh(d, mesh->positions, {}, name);
+		}
+		for (auto[txname, texture] : textures)
+		{
+			mybind(d, name, txname);
+			break;
+		}
 	}
 
 

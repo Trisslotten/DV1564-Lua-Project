@@ -44,10 +44,6 @@ void ConsoleThread(lua_State* L)
 
 int main()
 {
-	
-
-
-
 	lua_State* L = luaL_newstate();
 	luaL_openlibs(L);
 
@@ -63,7 +59,7 @@ int main()
 	irr::gui::IGUIEnvironment* guienv = device->getGUIEnvironment();
 
 
-	testScene("testscene.txt");
+	//testScene("testscene.txt");
 	loadScene("testscene.txt", device);
 
 	irr::SKeyMap keys[4];

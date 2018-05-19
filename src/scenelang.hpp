@@ -48,6 +48,19 @@ struct SceneTexture
 };
 
 
+struct SceneDeclaration
+{
+	bool hasTexture = false;
+	std::string texture;
+	SceneMesh mesh;
+	SceneDeclaration(SceneMesh* mesh): mesh(*mesh)
+	{
+	
+	}
+};
+
+
+
 bool loadScene(const std::string& path, irr::IrrlichtDevice* d);
 
 std::string loadFile(const std::string& path);

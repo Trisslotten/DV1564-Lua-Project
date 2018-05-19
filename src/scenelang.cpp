@@ -4,6 +4,7 @@
 #include <vector>
 #include <list>
 #include <map>
+#include <lua.hpp>
 #include "irrwrapper.hpp"
 #include "regex.hpp"
 #include "misc.hpp"
@@ -454,7 +455,7 @@ bool LUA(Tree** result)
 	int consumed = matchLua(input);
 	if (consumed > 0)
 	{
-		*result = new Tree("LUA", input, consumed);
+		*result = new Tree("LUA", input + 5, consumed - (5 + 2));
 
 		input += consumed;
 
@@ -524,8 +525,17 @@ std::string removeQuot(const std::string& str)
 	return str.substr(1, str.size() - 2);
 }
 
-std::vector<Tree*> generateTree(const std::string& source)
+std::vector<Tree*> generateTree(std::string source)
 {
+	for (int i = 0; i < source.size()-1; i++)
+	{
+		if (source.substr(i, 2) == "//")
+		{
+			int nextNewline = source.find('\n', i);
+			source.erase(source.begin() + i, source.begin() + nextNewline);
+		}
+	}
+
 	input = source.c_str();
 	beginning = input;
 	std::vector<Tree*> roots;
@@ -619,7 +629,8 @@ SceneMesh* extractMeshData(Tree* data)
 			i++;
 		}
 		result->positions.push_back(pos);
-		result->texCoords.push_back(tex);
+		if(i == 5)
+			result->texCoords.push_back(tex);
 	}
 
 	return result;
@@ -742,30 +753,232 @@ SceneTexture* extractTexture(Tree* def)
 }
 
 
+bool transformMesh(SceneMesh* mesh, const std::string& lua)
+{
+	lua_State* L = luaL_newstate();
+	luaL_openlibs(L);
+
+	for (int i = 0; i < mesh->positions.size(); i++)
+	{
+		if (luaL_loadstring(L, lua.c_str()))
+		{
+			std::cout << "SCENE ERROR: Transform Lua: " << lua_tostring(L, -1) << '\n';
+			lua_close(L);
+			return false;
+		}
+
+
+		irr::core::vector3df pos = mesh->positions[i];
+		lua_pushnumber(L, pos.X);
+		lua_pushnumber(L, pos.Y);
+		lua_pushnumber(L, pos.Z);
+
+		irr::core::vector2df tex(0);
+		if (mesh->hasTexCoords)
+		{
+			tex = mesh->texCoords[i];
+		}
+		lua_pushnumber(L, tex.X);
+		lua_pushnumber(L, tex.Y);
+
+		/*
+		for (int i = 0; i < 5; i++)
+		{
+			std::cout << lua_tonumber(L, i+2) << " ";
+		}
+		std::cout << "\n";
+		*/
+
+		if (lua_pcall(L, 5, 5, 0))
+		{
+			std::cout <<"SCENE ERROR: Transform Lua: " << lua_tostring(L, -1) << '\n';
+			lua_close(L);
+			return false;
+		}
+		for (int i = 0; i < 5; i++)
+		{
+			if (!lua_isnumber(L, i + 1))
+			{
+				luaL_error(L, "Error: return in transform must be number");
+				lua_close(L);
+				return false;
+			}
+		}
+
+		pos.X = lua_tonumber(L, 1);
+		pos.Y = lua_tonumber(L, 2);
+		pos.Z = lua_tonumber(L, 3);
+		tex.X = lua_tonumber(L, 4);
+		tex.Y = lua_tonumber(L, 5);
+
+		lua_pop(L, 5);
+
+		mesh->positions[i].set(pos);
+		if (mesh->hasTexCoords)
+		{
+			mesh->texCoords[i].set(tex);
+		}
+	}
+
+	lua_close(L);
+	return true;
+}
+
+
+SceneDeclaration* evalDeclaration(Tree* prototype, const std::map<std::string, SceneMesh*>& meshes)
+{
+	Tree* identifier = prototype->children.front();
+	Tree* parameters = prototype->children.back();
+	if (parameters->children.empty())
+	{
+		std::cerr << "SCENE ERROR: Scene declaration missing parameter\n";
+		return nullptr;
+	}
+
+	std::string idstr = identifier->lexeme;
+
+	if (idstr == "Mesh")
+	{
+		Tree* firstparam = parameters->children.front();
+		if (firstparam->tag != "STRING")
+		{
+			std::cerr << "SCENE ERROR: Declaration 'Mesh' expected string parameter\n";
+			return nullptr;
+		}
+		std::string name = firstparam->lexeme;
+
+		auto item = meshes.find(name);
+		if (item == meshes.end())
+		{
+			std::cerr << "SCENE ERROR: Could not find mesh: '" << name << "'\n";
+			return nullptr;
+		}
+		auto mesh = item->second;
+		return new SceneDeclaration(mesh);
+	}
+
+	if (idstr == "Bind")
+	{
+		if (parameters->children.size() != 2)
+		{
+			std::cerr << "SCENE ERROR: 'Bind' expected exactly 2 parameters\n";
+		}
+
+		Tree* firstparam = parameters->children.front();
+		if (firstparam->tag != "STRING")
+		{
+			std::cerr << "SCENE ERROR: Declaration 'Bind' expected string as first parameter\n";
+			return nullptr;
+		}
+		std::string texName = firstparam->lexeme;
+
+		Tree* secondparam = parameters->children.back();
+		if (secondparam->tag != "PROTOTYPE")
+		{
+			std::cerr << "SCENE ERROR: Declaration 'Bind' expected declaration as second parameter\n";
+			return nullptr;
+		}
+
+		auto sceneDecl = evalDeclaration(secondparam, meshes);
+		if (!sceneDecl)
+		{
+			return nullptr;
+		}
+
+		sceneDecl->hasTexture = true;
+		sceneDecl->texture = texName;
+		return sceneDecl;
+	}
+
+	if (idstr == "Transform")
+	{
+		if (parameters->children.size() != 2)
+		{
+			std::cerr << "SCENE ERROR: 'Transform' expected exactly 2 parameters\n";
+		}
+
+		Tree* firstparam = parameters->children.front();
+		if (firstparam->tag != "LUA")
+		{
+			std::cerr << "SCENE ERROR: Declaration 'Transform' expected lua construct as first parameter\n";
+			return nullptr;
+		}
+		std::string luaCode = firstparam->lexeme;
+
+		Tree* secondparam = parameters->children.back();
+		if (secondparam->tag != "PROTOTYPE")
+		{
+			std::cerr << "SCENE ERROR: Declaration 'Transform' expected declaration as second parameter\n";
+			return nullptr;
+		}
+
+		auto sceneDecl = evalDeclaration(secondparam, meshes);
+
+		if (sceneDecl)
+		{
+			if (transformMesh(&sceneDecl->mesh, luaCode))
+			{
+				return sceneDecl;
+			}
+			else
+			{
+				delete sceneDecl;
+				std::cerr << "SCENE ERROR: Could not transform mesh\n";
+				return nullptr;
+			}
+		}
+
+		return nullptr;
+	}
+}
+
+std::string genMeshSuffix(const std::string& meshName)
+{
+	static std::map<std::string, uint64_t> counts;
+	auto item = counts.find(meshName);
+	if (item == counts.end())
+	{
+		counts[meshName] = 0;
+		return "";
+	}
+	else
+	{
+		item->second++;
+		return std::to_string(item->second);
+	}
+}
+
 bool loadScene(const std::string & path, irr::IrrlichtDevice * d)
 {
 	std::string scene = loadFile(path);
 	auto defs = generateTree(scene);
 
+	Tree* sceneDef = nullptr;
 
 	std::map<std::string, SceneMesh*> meshes;
-	std::map<std::string, SceneTexture*> textures;
-
-	Tree* sceneDef = nullptr;
 
 	std::cout << "Extracting data from syntax tree...\n";
 	for (auto def : defs)
 	{
 		auto prototype = def->children.front();
 		std::string identifier = prototype->children.front()->lexeme;
-		std::cout << identifier << "\n";
+		//std::cout << identifier << "\n";
 
 		if (identifier == "Mesh")
 		{
 			auto mesh = extractMesh(def);
 			if (mesh)
 			{
-				meshes[mesh->name] = mesh;
+				auto item = meshes.find(mesh->name);
+				if (item != meshes.end())
+				{
+					std::cerr << "SCENE ERROR: Meshes cannot have same name, skipping\n";
+					delete mesh;
+				}
+				else
+				{
+					meshes[mesh->name] = mesh;
+				}
 			}
 			continue;
 		}
@@ -774,7 +987,8 @@ bool loadScene(const std::string & path, irr::IrrlichtDevice * d)
 			auto texture = extractTexture(def);
 			if (texture)
 			{
-				textures[texture->name] = texture;
+				addTexture(d->getVideoDriver(), texture->name, texture->colors, texture->size, texture->size);
+				delete texture;
 			}
 			continue;
 		}
@@ -793,35 +1007,52 @@ bool loadScene(const std::string & path, irr::IrrlichtDevice * d)
 		std::cout << "SCENE ERROR: Unknown definition: '" << identifier << "', skipping\n";
 	}
 
-
-
-	for (auto[name, texture] : textures)
+	bool success = false;
+	if (sceneDef)
 	{
-		addTexture(d->getVideoDriver(), texture->name, texture->colors, texture->size, texture->size);
-	}
+		success = true;
 
+		Tree* block = sceneDef->children.back();
+		Tree* current = block->children.front();
 
-	for (auto [name, mesh] : meshes)
-	{
-		if (mesh->hasTexCoords)
+		if (current->tag != "DECLARATIONS")
 		{
-			addMesh(d, mesh->positions, mesh->texCoords, name);
+			success = false;
 		}
 		else
 		{
-			addMesh(d, mesh->positions, {}, name);
-		}
-		for (auto[txname, texture] : textures)
-		{
-			mybind(d, name, txname);
-			break;
+			while (!current->children.empty())
+			{
+				Tree* prototype = current->children.front();
+
+				auto sceneDecl = evalDeclaration(prototype, meshes);
+				if (sceneDecl)
+				{
+					auto& mesh = sceneDecl->mesh;
+
+					mesh.name += genMeshSuffix(mesh.name);
+
+					addMesh(d, mesh.positions, mesh.texCoords, mesh.name);
+
+					if (sceneDecl->hasTexture)
+						mybind(d, mesh.name, sceneDecl->texture);
+				}
+				current = current->children.back();
+			}
 		}
 	}
+	else
+	{
+		success = false;
+		std::cerr << "SCENE ERROR: Missing 'Scene'\n";
+	}
 
+	for (auto [name, mesh] : meshes)
+	{
+		delete mesh;
+	}
 
-
-
-	return 1;
+	return success;
 }
 
 
@@ -848,5 +1079,6 @@ void testScene(const std::string & path)
 	for (auto& root : roots)
 	{
 		root->dump();
+		std::cout << "\n";
 	}
 }

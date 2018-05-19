@@ -44,7 +44,7 @@ void ConsoleThread(lua_State* L)
 
 int main()
 {
-	testScene("testscene.txt");
+	
 
 
 
@@ -61,6 +61,10 @@ int main()
 	irr::video::IVideoDriver* driver = device->getVideoDriver();
 	irr::scene::ISceneManager* smgr = device->getSceneManager();
 	irr::gui::IGUIEnvironment* guienv = device->getGUIEnvironment();
+
+
+	loadScene("testscene.txt", device);
+
 
 	irr::SKeyMap keys[4];
 	keys[0].Action = irr::EKA_MOVE_FORWARD;

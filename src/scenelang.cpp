@@ -3,6 +3,7 @@
 #include <fstream>
 #include <vector>
 #include <list>
+#include <map>
 #include "regex.hpp"
 
 /*
@@ -43,6 +44,14 @@ namespace
 		std::string lexeme, tag;
 		std::list < Tree * > children;
 		Tree(std::string t, const char * l, int size) : tag(t), lexeme(l, size) {}
+
+		~Tree()
+		{
+			for (auto c : children)
+			{
+				delete c;
+			}
+		}
 
 		// probably wont work with \n existing in input
 		void dump(std::vector<int> connections = {})
@@ -507,8 +516,118 @@ bool IDENTIFIER(Tree** result)
 	return false;
 }
 
+std::vector<Tree*> generateTree(const std::string& source)
+{
+	input = source.c_str();
+	beginning = input;
+	std::vector<Tree*> roots;
+	bool run = true;
+	while (run)
+	{
+		Tree* child;
+		if (DEFINITION(&child))
+		{
+			auto def = child->children.front()->children.front()->lexeme;
+			std::cout << "Parsed: '" << def << "'\n";
+			roots.push_back(child);
+		}
+		else
+		{
+			int lines = 0;
+			for (const char* i = beginning; i != input; i++)
+				if (*i == '\n')
+					lines++;
+			std::cout << "DEFINITION syntax error near line " << lines << "!\n";
+			run = false;
+		}
+		std::string inputleft = input;
+		if (inputleft.empty())
+		{
+			run = false;
+		}
+	}
+	return roots;
+}
+
+
+SceneMesh* extractMeshLua(Tree* lua)
+{
+
+}
+
+SceneMesh* extractMeshData(Tree* data)
+{
+	SceneMesh* result = new SceneMesh();
+
+
+}
+
+SceneMesh* extractMesh(Tree* block)
+{
+	std::string tag = block->children.front()->tag;
+	if (tag == "DECLARATIONS")
+	{
+		std::cerr << "SCENE ERROR: Declarations in 'Mesh', expected Lua or raw vertex data\n";
+		return nullptr;
+	}
+
+	SceneMesh* result;
+	if (tag == "DATA")
+	{
+		result = extractMeshData(block->children.front());
+	}
+	if (tag == "LUA")
+	{
+		result = extractMeshLua(block->children.front());
+	}
+	if (result)
+	{
+		
+	}
+	return result;
+}
+
+
 bool loadScene(const std::string & path, irr::IrrlichtDevice * d)
 {
+	std::string scene = loadFile(path);
+	auto roots = generateTree(scene);
+
+
+	std::map<std::string, SceneMesh*> meshes;
+
+	std::cout << "Extracting data from syntax tree...\n";
+	for (auto root : roots)
+	{
+		auto prototype = root->children.front();
+		std::string identifier = prototype->children.front()->lexeme;
+		std::cout << identifier << "\n";
+
+		if (identifier == "Mesh")
+		{
+			auto mesh = extractMesh(root->children.back());
+			if (mesh)
+			{
+				meshes[mesh->name] = mesh;
+			}
+			continue;
+		}
+
+		if (identifier == "Texture")
+		{
+
+			continue;
+		}
+
+		if (identifier == "Scene")
+		{
+
+			continue;
+		}
+
+
+	}
+
 
 
 
@@ -527,40 +646,15 @@ std::string loadFile(const std::string & path)
 	return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 }
 
+
+
 void testScene(const std::string & path)
 {
 	std::string scene = loadFile(path);
-	input = scene.c_str();
-	beginning = input;
 
-	std::vector<Tree*> roots;
+	auto roots = generateTree(scene);
 
-	bool run = true;
-	while (run)
-	{
-		Tree* child;
-		if (DEFINITION(&child))
-		{
-			std::cout << "DEFINITION syntax ok\n";
-			roots.push_back(child);
-		}
-		else
-		{
-			int lines = 0;
-			for (const char* i = beginning; i != input; i++)
-				if (*i == '\n')
-					lines++;
-
-			std::cout << "DEFINITION syntax error near line " << lines << "!\n";
-			run = false;
-		}
-		std::string inputleft = input;
-		if (inputleft.empty())
-		{
-			run = false;
-		}
-	}
-
+	system("color a");
 	for (auto& root : roots)
 	{
 		root->dump();

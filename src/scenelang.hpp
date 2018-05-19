@@ -1,6 +1,7 @@
 #pragma once
 #include <irrlicht.h>
 #include <string>
+#include <vector>
 #include <iostream>
 /*
 
@@ -29,6 +30,23 @@ NUM
 STRING
 LUA
 */
+
+
+
+
+struct SceneVertex
+{
+	irr::core::vector3df position;
+	irr::core::vector2df texCoords;
+};
+
+struct SceneMesh
+{
+	std::string name;
+	bool hasTexCoords = false;
+	std::vector<SceneVertex> vertices;
+};
+
 
 bool loadScene(const std::string& path, irr::IrrlichtDevice* d);
 

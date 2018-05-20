@@ -62,21 +62,8 @@ int main()
 	//testScene("testscene.txt");
 	loadScene("testscene.txt", device);
 
-	irr::SKeyMap keys[4];
-	keys[0].Action = irr::EKA_MOVE_FORWARD;
-	keys[0].KeyCode = irr::KEY_KEY_W;
+	addCamera(device);
 
-	keys[1].Action = irr::EKA_MOVE_BACKWARD;
-	keys[1].KeyCode = irr::KEY_KEY_S;
-
-	keys[2].Action = irr::EKA_STRAFE_LEFT;
-	keys[2].KeyCode = irr::KEY_KEY_A;
-
-	keys[3].Action = irr::EKA_STRAFE_RIGHT;
-	keys[3].KeyCode = irr::KEY_KEY_D;
-
-	auto cam = smgr->addCameraSceneNodeFPS(0, 100.f, 0.02f, generateGUID(), keys, 4);
-	cam->setName("camera");
 
 	lua_pushcclosure(L, lb_snapshot, 0);
 	lua_setglobal(L, "snapshot"); 
@@ -88,8 +75,8 @@ int main()
 	lua_pushlightuserdata(L, device);
 	lua_pushcclosure(L, lb_addBox, 1);
 	lua_setglobal(L, "addBox");
-	
-	lua_pushlightuserdata(L, cam);
+
+	lua_pushlightuserdata(L, smgr);
 	lua_pushcclosure(L, lb_camera, 1);
 	lua_setglobal(L, "camera");
 
@@ -112,7 +99,11 @@ int main()
 	while (device->run())
 	{
 		bool windowActive = device->isWindowActive();
-		cam->setInputReceiverEnabled(windowActive);
+		auto cam = smgr->getActiveCamera();
+		if (cam)
+		{
+			cam->setInputReceiverEnabled(windowActive);
+		}
 		device->getCursorControl()->setVisible(!windowActive);
 
 

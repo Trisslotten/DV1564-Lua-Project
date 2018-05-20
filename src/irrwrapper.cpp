@@ -254,6 +254,29 @@ void clearScene(irr::IrrlichtDevice * device)
 
 	auto root = smgr->getRootSceneNode();
 	root->removeAll();
+
+	addCamera(device);
+}
+
+void addCamera(irr::IrrlichtDevice * device)
+{
+	auto smgr = device->getSceneManager();
+
+	irr::SKeyMap keys[4];
+	keys[0].Action = irr::EKA_MOVE_FORWARD;
+	keys[0].KeyCode = irr::KEY_KEY_W;
+
+	keys[1].Action = irr::EKA_MOVE_BACKWARD;
+	keys[1].KeyCode = irr::KEY_KEY_S;
+
+	keys[2].Action = irr::EKA_STRAFE_LEFT;
+	keys[2].KeyCode = irr::KEY_KEY_A;
+
+	keys[3].Action = irr::EKA_STRAFE_RIGHT;
+	keys[3].KeyCode = irr::KEY_KEY_D;
+
+	auto cam = smgr->addCameraSceneNodeFPS(0, 100.f, 0.02f, generateGUID(), keys, 4);
+	cam->setName("camera");
 }
 
 

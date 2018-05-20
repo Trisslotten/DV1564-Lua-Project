@@ -34,3 +34,5 @@ void addTexture(irr::video::IVideoDriver* driver, const std::string& name, std::
 void mybind(irr::IrrlichtDevice* device, const std::string& node, const std::string& texture);
 
 void clearScene(irr::IrrlichtDevice* device);
+
+void addCamera(irr::IrrlichtDevice* device);

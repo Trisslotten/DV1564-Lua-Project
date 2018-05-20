@@ -72,9 +72,14 @@ static int lb_camera(lua_State* L)
 		lua_pop(L, 1);
 	}
 
-	irr::scene::ICameraSceneNode* cam = static_cast<irr::scene::ICameraSceneNode*>(
+	auto smgr = static_cast<irr::scene::ISceneManager*>(
 		lua_touserdata(L, lua_upvalueindex(1))
-		);
+	);
+
+	auto cam = smgr->getActiveCamera();
+
+	if (!cam)
+		return luaL_error(L, "Error: no active camera");
 
 	cam->setPosition(eye);
 	cam->setTarget(target);

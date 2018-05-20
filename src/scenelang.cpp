@@ -1205,6 +1205,8 @@ std::string genMeshSuffix(const std::string& meshName)
 
 bool loadScene(const std::string & path, irr::IrrlichtDevice * d)
 {
+	clearScene(d);
+
 	std::string scene = loadFile(path);
 	auto defs = generateTree(scene);
 

@@ -32,3 +32,5 @@ void handleSnapshots(irr::video::IVideoDriver* driver);
 void addTexture(irr::video::IVideoDriver* driver, const std::string& name, std::vector<uint8_t > data, int width, int height);
 
 void mybind(irr::IrrlichtDevice* device, const std::string& node, const std::string& texture);
+
+void clearScene(irr::IrrlichtDevice* device);

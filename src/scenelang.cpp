@@ -804,9 +804,135 @@ SceneMesh* extractMesh(Tree* def)
 
 
 
-SceneTexture* extractTextureLua(Tree* data)
+SceneTexture* extractTextureLua(Tree* lua)
 {
-	return nullptr;
+	lua_State* L = luaL_newstate();
+	luaL_openlibs(L);
+
+	if (luaL_loadstring(L, lua->lexeme.c_str()) || lua_pcall(L, 0, 1, 0))
+	{
+		std::cerr << "SCENE ERROR: Texture Lua: " << lua_tostring(L, -1) << '\n';
+		lua_close(L);
+		return nullptr;
+	}
+
+
+	if (!lua_istable(L, 1))
+	{
+		std::cerr << "SCENE ERROR: Texture Lua: did not return table\n";
+		lua_close(L);
+		return nullptr;
+	}
+
+	int width = 0;
+	int height = 0;
+	std::vector<uint8_t> img;
+	std::string name;
+
+	lua_len(L, 1);
+	height = lua_tonumber(L, -1);
+	lua_pop(L, 1);
+
+	if (height == 0)
+	{
+		std::cerr << "SCENE ERROR: Texture Lua: height cannot be 0\n";
+		lua_close(L);
+		return nullptr;
+	}
+
+	lua_rawgeti(L, 1, 1);
+	if (!lua_istable(L, -1))
+	{
+		std::cerr << "SCENE ERROR: Texture Lua: row is not table\n";
+		lua_close(L);
+		return nullptr;
+	}
+
+	lua_len(L, -1);
+	width = lua_tonumber(L, -1);
+	lua_pop(L, 2);
+
+	if (width == 0)
+	{
+		std::cerr << "SCENE ERROR: Texture Lua: width cannot be 0\n";
+		lua_close(L);
+		return nullptr;
+	}
+
+	for (int y = 0; y < height; y++)
+	{
+		lua_rawgeti(L, 1, y + 1);
+		if (!lua_istable(L, -1))
+		{
+			std::cerr << "SCENE ERROR: Texture Lua: row is not table\n";
+			lua_close(L);
+			return nullptr;
+		}
+
+		lua_len(L, -1);
+		int currWidth = lua_tonumber(L, -1);
+		lua_pop(L, 1);
+		if (currWidth != width)
+		{
+			std::cerr << "SCENE ERROR: Texture Lua: row width mismatch\n";
+			lua_close(L);
+			return nullptr;
+		}
+
+		for (int x = 0; x < width; x++)
+		{
+			lua_rawgeti(L, -1, x + 1);
+			if (!lua_istable(L, -1))
+			{
+				std::cerr << "SCENE ERROR: Texture Lua: expected table with RGB color\n";
+				lua_close(L);
+				return nullptr;
+			}
+
+			lua_len(L, -1);
+			int elements = lua_tonumber(L, -1);
+			lua_pop(L, 1);
+			if (elements != 3)
+			{
+				std::cerr << "SCENE ERROR: Texture Lua: expected exacly 3 color components\n";
+				lua_close(L);
+				return nullptr;
+			}
+
+
+
+			for (int i = 0; i < 3; i++)
+			{
+				lua_rawgeti(L, -1, i + 1);
+				if (!lua_isnumber(L, -1))
+				{
+					std::cerr << "SCENE ERROR: Texture Lua: color component not a number\n";
+					lua_close(L);
+					return nullptr;
+				}
+
+				float component = lua_tonumber(L, -1);
+				lua_pop(L, 1);
+				if (component < 0.f)
+					component = 0.f;
+				if (component > 1.f)
+					component = 1.f;
+
+				img.push_back(uint8_t(component * 255));
+			}
+			lua_pop(L, 1);
+		}
+		lua_pop(L, 1);
+	}
+	lua_pop(L, 1);
+	lua_close(L);
+
+	SceneTexture* result = new SceneTexture();
+	result->width = width;
+	result->height = height;
+	result->colors = std::move(img);
+
+	return result;
 }
 
 SceneTexture* extractTextureData(Tree* data)
@@ -821,7 +947,8 @@ SceneTexture* extractTextureData(Tree* data)
 		std::cerr << "SCENE ERROR: Texture was not a square\n";
 		return nullptr;
 	}
-	result->size = root;
+	result->width = root;
+	result->height = root;
 
 	for (auto color : data->children)
 	{
@@ -1115,7 +1242,7 @@ bool loadScene(const std::string & path, irr::IrrlichtDevice * d)
 			auto texture = extractTexture(def);
 			if (texture)
 			{
-				addTexture(d->getVideoDriver(), texture->name, texture->colors, texture->size, texture->size);
+				addTexture(d->getVideoDriver(), texture->name, texture->colors, texture->width, texture->height);
 				delete texture;
 			}
 			continue;

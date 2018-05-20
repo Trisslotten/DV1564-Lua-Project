@@ -245,5 +245,16 @@ void mybind(irr::IrrlichtDevice * device, const std::string & nodeName, const st
 	mat.setFlag(irr::video::EMF_BILINEAR_FILTER, false);
 }
 
+void clearScene(irr::IrrlichtDevice * device)
+{
+	auto driver = device->getVideoDriver();
+	auto smgr = device->getSceneManager();
+
+	driver->removeAllTextures();
+
+	auto root = smgr->getRootSceneNode();
+	root->removeAll();
+}
+
 
 

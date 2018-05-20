@@ -43,7 +43,8 @@ struct SceneMesh
 struct SceneTexture
 {
 	std::string name;
-	int size;
+	int width;
+	int height;
 	std::vector<uint8_t> colors;
 };
 

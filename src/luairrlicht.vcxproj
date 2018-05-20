@@ -158,6 +158,9 @@
     <ClInclude Include="regexlib.hpp" />
     <ClInclude Include="scenelang.hpp" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\Bin\x64\testscene.txt" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

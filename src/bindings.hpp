@@ -351,7 +351,6 @@ static int lb_loadScene(lua_State* L)
 	if (!lua_isstring(L, 1))
 		return luaL_argerror(L, 1, "argument mismatch, expected string");
 
-
 	auto device = static_cast<irr::IrrlichtDevice*>(lua_touserdata(L, lua_upvalueindex(1)));
 	std::string filename = lua_tostring(L, 1);
 	std::ifstream f(filename);

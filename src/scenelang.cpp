@@ -1175,9 +1175,9 @@ bool loadScene(const std::string & path, irr::IrrlichtDevice * d)
 		std::cerr << "SCENE ERROR: Missing 'Scene'\n";
 	}
 
-	for (auto [name, mesh] : meshes)
+	for (auto mesh : meshes)
 	{
-		delete mesh;
+		delete mesh.second;
 	}
 
 	return success;

@@ -1,0 +1,250 @@
+Mesh("MengerSponge") { Lua(<
+		function tconcat(t1, t2)
+			local res = {}
+			for i=1,#t1 do res[i] = t1[i] end
+			for i=1,#t2 do res[i+#t1] = t2[i] end
+			return res
+		end
+		
+		function createCube(pos, size)
+			local vertices = {
+				{-1,-1,-1},
+				{1,-1,-1},
+				{1,1,-1},
+				{-1,1,-1},
+				{-1,1,1},
+				{1,1,1},
+				{1,-1,1},
+				{-1,-1,1}
+			}
+			for j, p in pairs(vertices) do
+				for i = 1,3 do 
+					p[i] = p[i] * size/2 + pos[i]
+				end
+			end
+
+			local indices = {
+				0, 2, 1, 0, 3, 2,
+				1, 5, 6, 1, 2, 5,
+				6, 4, 7, 6, 5, 4,
+				7, 3, 0, 7, 4, 3,
+				3, 5, 2, 3, 4, 5,
+				7, 1, 6, 7, 0, 1
+			}
+			-- 3  2
+			-- 0  1
+			local texs = {
+				{0, 0},
+				{1, 1},
+				{1, 0},
+				{0, 0},
+				{0, 1},
+				{1, 1}
+			}
+			local result = {}
+			for f = 1,6 do
+				for i = 1,6 do
+					local index = indices[(f-1) * 6 + i] + 1
+					table.insert(result, tconcat(vertices[index], texs[i]))
+				end
+			end
+			return result
+		end
+
+		function placeCubeCantorDust(x, y, z)
+			return x ~= 0 and y ~= 0 and z ~= 0
+		end
+
+		function placeCubeCantorDust2(x, y, z)
+			return x ~= 0 and y ~= 0 and z ~= 0 or x == 0 and y == 0 and z == 0
+		end
+
+		function placeCubeMengerSponge(x, y, z)
+			b1 = x == 0 and x == y
+			b2 = x == 0 and x == z
+			b3 = y == 0 and y == z
+			return not (b1 or b2 or b3)
+		end
+
+		function shouldPlaceCube(x, y, z)
+			return placeCubeMengerSponge(x,y,z)
+			--return placeCubeCantorDust(x,y,z)
+			--return placeCubeCantorDust2(x,y,z)
+		end
+
+		function subdivideCube(cube) 
+			local result = {}
+			for z = -1,1,1 do
+				for y = -1,1,1 do
+					for x = -1,1,1 do
+						if shouldPlaceCube(x, y, z) then
+							local newSize = cube.size / 3
+							local nx = cube.pos[1] + x * newSize
+							local ny = cube.pos[2] + y * newSize
+							local nz = cube.pos[3] + z * newSize
+							table.insert(result, {size = newSize, pos = {nx, ny, nz}})
+						end
+					end
+				end
+			end
+			return result
+		end
+
+		function cubesToVertices(cubes)
+			local result = {}
+			for i, cube in pairs(cubes) do
+				local verts = createCube(cube.pos, cube.size)
+				result = tconcat(result, verts)
+			end
+			
+			return result
+		end
+
+		cube = {size = 6, pos = {0, 0, 0}}
+		
+		cubes = {cube}
+		for j = 1, 2 do
+			temp = {}
+			for i, cube in pairs(cubes) do
+				new = subdivideCube(cube)
+				for k, c in pairs(new) do
+					table.insert(temp, c)
+				end
+			end
+			cubes = temp
+		end
+
+		verts = cubesToVertices(cubes)
+		return verts
+	>)
+}
+
+Texture("checkerboard")
+{
+	(0,0,0), (1,1,1), (0,0,0), (1,1,1),
+	(1,1,1), (0,0,0), (1,1,1), (0,0,0),
+	(0,0,0), (1,1,1), (0,0,0), (1,1,1),
+	(1,1,1), (0,0,0), (1,1,1), (0,0,0)
+}
+
+//	example: {{{1.0,0.5,0.5},{0.5,1.0,0.5}},{{0.5,0.5,1.0},{0.0,0.0,0.0}}}
+Texture("noise")
+{
+	Lua(<
+		function hash(x, y)
+			r = math.fmod(math.sin(x*13.9593 + y*46.1959) * 48568.5453, 1)
+			return math.abs(r)
+		end
+
+		function hermit(t)
+			return t * t * (3 - 2 * t)
+		end
+
+		-- https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/smoothstep.xhtml
+		function smoothstep(a, b, x)
+			t = math.max(math.min((x-a)/(b-a), 0), 1)
+			return hermit(t)
+		end
+
+		function lerp(a, b, t)
+			return a * (1 - t) + b * t;
+		end
+
+		function noise(x, y)
+			s = 100
+			x0 = math.floor(x/s)
+			x1 = x0 + 1
+			tx = hermit(math.fmod(x/s, 1))
+			y0 = math.floor(y/s)
+			y1 = y0 + 1
+			ty = hermit(math.fmod(y/s, 1))
+			h00 = hash(x0, y0)
+			h10 = hash(x1, y0)
+			h01 = hash(x0, y1)
+			h11 = hash(x1, y1)
+			i0 = lerp(h00, h10, tx)
+			i1 = lerp(h01, h11, tx)
+			n = lerp(i0, i1, ty)
+			return n
+		end
+
+		function noise2(x, y)
+			local sum = 0
+			local s = 1
+			local div = 0
+			for i = 1, 3 do
+				sum = sum + noise(x * s, y * s) / s
+				div = div + 1 / s
+				s = s * 3
+			end
+			return sum / div
+		end
+
+
+		w = 300
+		h = 300
+		result = {}
+		for y = 1, h do
+			row = {}
+			for x = 1, w do
+				c = 1-math.abs(2*noise2(x,y) - 1)
+				c2 = 1-math.abs(2*c - 1)
+				c = 1-math.abs(2*c2 - 1)
+				color = {
+					c,
+					1-c,
+					c2
+				}
+				table.insert(row, color)
+			end
+			table.insert(result, row)
+		end
+
+		return result
+	>)
+}
+
+Mesh("square")
+{
+	(-20,0,-20,0,0), (20,0,-20,1,0), (-20,0,20,0,1),
+	(20,0,-20,1,0), (20,0,20,1,1), (-20,0,20,0,1)
+}
+
+Scene()
+{
+	Bind("noise", Mesh("square") )
+
+	Bind( "checkerboard",
+	      Transform( Lua(< local args = {...} return args[1], args[2] + 6, args[3], args[4], args[5] >),
+	                 Mesh("MengerSponge") ) )
+	
+	Bind("noise", 
+		Transform(
+			Lua(<
+				local v = {...}
+				return	v[1] + math.sin(v[2]*1) + 12, 
+						v[2] + 6, 
+						v[3] + math.sin(v[2]*1), 
+						v[4], 
+						v[5]
+			>), 
+			Mesh("MengerSponge")))
+
+
+	// x' = x cos f - y sin f
+	// y' = y cos f + x sin f
+	Bind("noise", 
+		Transform(
+			Lua(<
+				local v = {...}
+				a = math.pi * (v[2] + 3)/12
+				return	v[1] * math.cos(a) - v[3] * math.sin(a) - 12,
+						v[2] + 6,
+						v[3] * math.cos(a) + v[1] * math.sin(a),
+						v[4],
+						v[5]
+			>), 
+			Mesh("MengerSponge")))
+
+
+}

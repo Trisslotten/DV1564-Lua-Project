@@ -536,7 +536,8 @@ std::vector<Tree*> generateTree(std::string source)
 		if (source.substr(i, 2) == "//")
 		{
 			int nextNewline = source.find('\n', i);
-			source.erase(source.begin() + i, source.begin() + nextNewline);
+			if(nextNewline != source.npos)
+				source.erase(source.begin() + i, source.begin() + nextNewline);
 		}
 	}
 

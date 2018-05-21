@@ -539,6 +539,9 @@ std::vector<Tree*> generateTree(std::string source)
 	input = source.c_str();
 	beginning = input;
 	std::vector<Tree*> roots;
+
+	consumeWhitespace();
+
 	bool run = true;
 	while (run)
 	{

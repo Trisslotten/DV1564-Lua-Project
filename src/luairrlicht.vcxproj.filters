@@ -55,8 +55,34 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="..\Bin\x64\testscene.txt">
+    <Text Include="..\Bin\x64\myscene.txt">
       <Filter>Resource Files</Filter>
     </Text>
+    <Text Include="..\Bin\x64\scene1.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="..\Bin\x64\scene2.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="..\Bin\x64\scene3.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Bin\x64\test1.lua">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\Bin\x64\test2.lua">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\Bin\x64\test3.lua">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\Bin\x64\test4.lua">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\Bin\x64\test5.lua">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -376,3 +376,11 @@ static int lb_loadScene(lua_State* L)
 		return luaL_error(L, "Error: Failed parsing scene file");
 	}
 }
+
+
+static int lb_clearScene(lua_State* L)
+{
+	auto device = static_cast<irr::IrrlichtDevice*>(lua_touserdata(L, lua_upvalueindex(1)));
+	clearScene(device);
+	return 0;
+}

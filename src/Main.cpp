@@ -49,7 +49,7 @@ int main()
 
 	std::thread conThread(ConsoleThread, L);
 
-	irr::IrrlichtDevice* device = irr::createDevice(irr::video::EDT_OPENGL, irr::core::dimension2d<irr::u32>(1280, 720), 16, false, false, true, 0);
+	irr::IrrlichtDevice* device = irr::createDevice(irr::video::EDT_OPENGL, irr::core::dimension2d<irr::u32>(640, 480), 16, false, false, true, 0);
 	if (!device)
 		return 1;
 
@@ -60,7 +60,7 @@ int main()
 
 
 	//testScene("testscene.txt");
-	loadScene("testscene.txt", device);
+	//loadScene("testscene.txt", device);
 
 	addCamera(device);
 
@@ -95,6 +95,10 @@ int main()
 	lua_pushlightuserdata(L, device);
 	lua_pushcclosure(L, lb_loadScene, 1);
 	lua_setglobal(L, "loadScene");
+
+	lua_pushlightuserdata(L, device);
+	lua_pushcclosure(L, lb_clearScene, 1);
+	lua_setglobal(L, "clearScene");
 
 	while (device->run())
 	{

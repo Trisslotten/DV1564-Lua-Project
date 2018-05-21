@@ -159,7 +159,17 @@
     <ClInclude Include="scenelang.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="..\Bin\x64\testscene.txt" />
+    <Text Include="..\Bin\x64\myscene.txt" />
+    <Text Include="..\Bin\x64\scene1.txt" />
+    <Text Include="..\Bin\x64\scene2.txt" />
+    <Text Include="..\Bin\x64\scene3.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Bin\x64\test1.lua" />
+    <None Include="..\Bin\x64\test2.lua" />
+    <None Include="..\Bin\x64\test3.lua" />
+    <None Include="..\Bin\x64\test4.lua" />
+    <None Include="..\Bin\x64\test5.lua" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

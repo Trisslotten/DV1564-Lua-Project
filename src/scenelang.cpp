@@ -527,6 +527,10 @@ std::string removeQuot(const std::string& str)
 
 std::vector<Tree*> generateTree(std::string source)
 {
+
+	std::vector<Tree*> roots;
+	if (source.empty())
+		return roots;
 	for (int i = 0; i < source.size()-1; i++)
 	{
 		if (source.substr(i, 2) == "//")
@@ -538,7 +542,6 @@ std::vector<Tree*> generateTree(std::string source)
 
 	input = source.c_str();
 	beginning = input;
-	std::vector<Tree*> roots;
 
 	consumeWhitespace();
 

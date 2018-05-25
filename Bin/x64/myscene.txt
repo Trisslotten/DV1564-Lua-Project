@@ -102,8 +102,10 @@ Mesh("MengerSponge") { Lua(<
 
 		cube = {size = 6, pos = {0, 0, 0}}
 		
+		divisions = 2
+
 		cubes = {cube}
-		for j = 1, 2 do
+		for j = 1, divisions do
 			temp = {}
 			for i, cube in pairs(cubes) do
 				new = subdivideCube(cube)
@@ -231,8 +233,8 @@ Scene()
 			Mesh("MengerSponge")))
 
 
-	// x' = x cos f - y sin f
-	// y' = y cos f + x sin f
+	// x' = x cos a - y sin a
+	// y' = y cos a + x sin a
 	Bind("noise", 
 		Transform(
 			Lua(<

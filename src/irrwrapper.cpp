@@ -174,6 +174,11 @@ std::vector<NodeInfo> getNodes(irr::scene::ISceneManager* smgr)
 		NodeInfo info;
 		info.id = child->getID();
 		info.name = child->getName();
+		auto type = child->getType();
+		char str[5];
+		memcpy(str, &type, sizeof(uint32_t));
+		str[4] = '\0';
+		info.type = str;
 		result.push_back(info);
 	}
 	return result;
